@@ -57,3 +57,8 @@ Le code PHP expose `App\Enums\CoverageStatus`. En base, la valeur reste une cha�
 | `created_at`, `updated_at` | timestamps |  |
 
 La clé primaire composée est `station_id, line_id`. Un index `line_id, position` facilite l'affichage ordonné des stations d'une ligne.
+# Synchronisation IDFM
+
+Les tables publiques conservent les champs editoriaux de fotometro et ajoutent des metadonnees d'import: `external_id` quand necessaire, `source`, `source_payload`, `source_updated_at` et `is_active`. Les payloads source sont conserves pour audit technique et ne sont pas exposes par l'API publique.
+
+`station_accesses` stocke les acces et sorties issus des sources IDFM. `access_station` relie un acces a une ou plusieurs stations.

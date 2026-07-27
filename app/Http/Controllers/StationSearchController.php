@@ -26,7 +26,8 @@ class StationSearchController extends Controller
 
         $stations = Station::query()
             ->where('is_active', true)
-            ->with(['lines' => fn ($query) => $query->withCount('stations')->orderBy('sort_order')])
+            ->with(['lines' => fn ($query) => $query->where('is_active', true)->withCount('stations')->orderBy('sort_order')])
+            ->withCount('accesses')
             ->orderBy('name')
             ->limit(80)
             ->get()

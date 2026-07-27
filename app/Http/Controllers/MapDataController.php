@@ -16,11 +16,13 @@ class MapDataController extends Controller
     {
         $payload = Cache::remember('fotometro.public-map.v1', config('fotometro.map.cache_ttl'), function (): array {
             $lines = Line::query()
+                ->where('is_active', true)
                 ->with(['stations' => fn ($query) => $query
                     ->where('is_active', true)
                     ->whereNotNull('latitude')
                     ->whereNotNull('longitude')
-                    ->with(['lines' => fn ($lineQuery) => $lineQuery->orderBy('sort_order')])])
+                    ->with(['lines' => fn ($lineQuery) => $lineQuery->where('is_active', true)->orderBy('sort_order')])
+                    ->withCount('accesses')])
                 ->withCount('stations')
                 ->orderBy('sort_order')
                 ->get();
@@ -29,7 +31,8 @@ class MapDataController extends Controller
                 ->where('is_active', true)
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
-                ->with(['lines' => fn ($query) => $query->withCount('stations')->orderBy('sort_order')])
+                ->with(['lines' => fn ($query) => $query->where('is_active', true)->withCount('stations')->orderBy('sort_order')])
+                ->withCount('accesses')
                 ->orderBy('name')
                 ->get();
 

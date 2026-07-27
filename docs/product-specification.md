@@ -50,3 +50,8 @@ L'administrateur se connecte avec un compte unique et consulte le tableau de bor
 L'accueil est une carte MapLibre plein ecran avec des panneaux flottants. La barre superieure regroupe le logo ou son fallback, la recherche et les actions. Les panneaux de progression, filtres, lignes, station et ligne apparaissent au-dessus de la carte sans recreer MapLibre.
 
 La selection de ligne ouvre un schema dynamique construit depuis les donnees Laravel. Le schema est horizontal sur desktop et vertical sur mobile. Les stations sont triees par position de pivot, les terminus sont signales, les correspondances ne repetent pas la ligne active et les statuts utilisent des formes en plus des couleurs.
+# Donnees reseau reelles
+
+Le produit s'appuie desormais sur un import IDFM pour remplacer les donnees de demonstration lorsque les sources sont configurees. L'import couvre lignes, stations, correspondances, ordre, terminus, branches simples, traces GeoJSON valides et acces si les datasets d'acces sont fournis.
+
+Les donnees editoriales de couverture photographique restent propres a fotometro et ne sont pas ecrasees par l'import.
