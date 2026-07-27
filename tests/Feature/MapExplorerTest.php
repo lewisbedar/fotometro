@@ -21,15 +21,34 @@ class MapExplorerTest extends TestCase
         Cache::flush();
     }
 
-    public function test_homepage_displays_map_explorer_and_progress(): void
+    public function test_homepage_displays_fullscreen_map_explorer(): void
     {
         $this->seed(LineStationSeeder::class);
 
         $this->get('/')
             ->assertOk()
-            ->assertSee('Catalogue photographique des stations du métro parisien')
-            ->assertSee('Progression globale : 40 %')
-            ->assertSee('Ligne 1');
+            ->assertSee('fullscreen-map-shell', false)
+            ->assertSee('id="metro-map"', false)
+            ->assertSee('fullscreen-map-topbar', false)
+            ->assertSee('Progression globale')
+            ->assertSee('Rechercher une station')
+            ->assertSee('Lignes')
+            ->assertSee('Filtres');
+    }
+
+    public function test_homepage_renders_floating_panels_and_diagram_shell(): void
+    {
+        $this->seed(LineStationSeeder::class);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('map-progress-panel', false)
+            ->assertSee('id="filters-panel"', false)
+            ->assertSee('id="lines-panel"', false)
+            ->assertSee('map-context-panel', false)
+            ->assertSee('line-diagram-panel', false)
+            ->assertSee('Entrees et sorties')
+            ->assertSee('Bientot disponible');
     }
 
     public function test_raster_driver_is_the_default_basemap_configuration(): void
@@ -142,7 +161,7 @@ class MapExplorerTest extends TestCase
         $inactiveStation->lines()->attach($line, ['position' => 99, 'is_terminus' => false]);
 
         $missingCoordinates = Station::factory()->create([
-            'name' => 'Station sans coordonnées',
+            'name' => 'Station sans coordonnees',
             'slug' => 'station-sans-coordonnees',
             'latitude' => null,
             'longitude' => null,
@@ -162,6 +181,86 @@ class MapExplorerTest extends TestCase
         $this->assertSame(1, $stations->where('slug', 'chatelet')->count());
         $this->assertCount(3, $stations->firstWhere('slug', 'chatelet')['lines']);
         $this->assertNull($response->json('lines.0.path_geojson'));
+    }
+
+    public function test_map_api_contains_ordered_line_stations_for_diagram(): void
+    {
+        $this->seed(LineStationSeeder::class);
+
+        $line = collect($this->getJson('/api/map')->assertOk()->json('lines'))->firstWhere('code', '1');
+
+        $this->assertSame(['Chatelet', 'Bastille', 'Nation'], collect($line['stations'])->pluck('name')->all());
+        $this->assertSame([8, 12, 18], collect($line['stations'])->pluck('position')->all());
+    }
+
+    public function test_map_api_marks_terminus_and_omits_active_line_from_connections(): void
+    {
+        $this->seed(LineStationSeeder::class);
+
+        $line = collect($this->getJson('/api/map')->assertOk()->json('lines'))->firstWhere('code', '6');
+        $nation = collect($line['stations'])->firstWhere('slug', 'nation');
+
+        $this->assertTrue($nation['is_terminus']);
+        $this->assertSame(['1'], collect($nation['connections'])->pluck('code')->all());
+        $this->assertNotContains('6', collect($nation['connections'])->pluck('code')->all());
+    }
+
+    public function test_map_api_exposes_coverage_statuses_for_diagram_nodes(): void
+    {
+        $this->seed(LineStationSeeder::class);
+
+        $station = collect($this->getJson('/api/map')->assertOk()->json('lines'))
+            ->firstWhere('code', '14')['stations'][0];
+
+        $this->assertArrayHasKey('coverage_status', $station);
+        $this->assertContains($station['coverage_status']['value'], [
+            'not_started',
+            'planned',
+            'in_progress',
+            'documented',
+            'complete',
+        ]);
+    }
+
+    public function test_map_api_handles_line_without_station_for_diagram(): void
+    {
+        Line::factory()->create(['code' => '99', 'name' => 'Ligne 99', 'slug' => 'ligne-99']);
+
+        $line = collect($this->getJson('/api/map')->assertOk()->json('lines'))->firstWhere('code', '99');
+
+        $this->assertSame([], $line['stations']);
+        $this->assertSame(0, $line['progress']['total']);
+        $this->assertSame(0, $line['progress']['percentage']);
+    }
+
+    public function test_map_api_handles_line_with_single_station_for_diagram(): void
+    {
+        $line = Line::factory()->create(['code' => '98', 'name' => 'Ligne 98', 'slug' => 'ligne-98']);
+        $station = Station::factory()->create([
+            'name' => 'Station unique',
+            'slug' => 'station-unique',
+            'latitude' => 48.86,
+            'longitude' => 2.35,
+            'is_active' => true,
+        ]);
+
+        $station->lines()->attach($line, ['position' => 1, 'is_terminus' => true]);
+
+        $linePayload = collect($this->getJson('/api/map')->assertOk()->json('lines'))->firstWhere('code', '98');
+
+        $this->assertCount(1, $linePayload['stations']);
+        $this->assertSame('Station unique', $linePayload['stations'][0]['name']);
+        $this->assertTrue($linePayload['stations'][0]['is_terminus']);
+    }
+
+    public function test_seeded_line_colors_are_hex_values_for_safe_rendering(): void
+    {
+        $this->seed(LineStationSeeder::class);
+
+        collect($this->getJson('/api/map')->assertOk()->json('lines'))->each(function (array $line): void {
+            $this->assertMatchesRegularExpression('/^#[0-9A-Fa-f]{6}$/', $line['color']);
+            $this->assertMatchesRegularExpression('/^#[0-9A-Fa-f]{6}$/', $line['text_color']);
+        });
     }
 
     public function test_each_demo_line_exposes_a_distinct_station_list(): void
@@ -246,8 +345,7 @@ class MapExplorerTest extends TestCase
     {
         $this->seed(LineStationSeeder::class);
 
-        $station = collect($this->getJson('/api/map')->assertOk()->json('stations'))
-            ->firstWhere('slug', 'chatelet');
+        $station = collect($this->getJson('/api/map')->assertOk()->json('stations'))->firstWhere('slug', 'chatelet');
 
         $this->assertSame([2.347, 48.8586], $station['coordinates']);
         $this->assertSame(48.8586, $station['latitude']);
@@ -258,7 +356,7 @@ class MapExplorerTest extends TestCase
     {
         $this->seed(LineStationSeeder::class);
 
-        $this->getJson('/api/map/search?q=châtelet')
+        $this->getJson('/api/map/search?q=chatelet')
             ->assertOk()
             ->assertJsonPath('data.0.slug', 'chatelet')
             ->assertJsonPath('data.0.lines.0.code', '1');
@@ -314,7 +412,7 @@ class MapExplorerTest extends TestCase
         $this->get('/stations/chatelet')
             ->assertOk()
             ->assertSee('Chatelet')
-            ->assertSee('Aucune photographie publiée pour cette station.');
+            ->assertSee('Aucune photographie');
 
         $this->get('/stations/inconnue')->assertNotFound();
     }

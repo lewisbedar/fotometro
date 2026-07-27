@@ -22,6 +22,12 @@ class HomeController extends Controller
             'stationCount' => $stationCount,
             'documentedStationCount' => $documentedStationCount,
             'progressPercentage' => $stationCount === 0 ? 0 : (int) round(($documentedStationCount / $stationCount) * 100),
+            'coverageStatusCounts' => collect(CoverageStatus::cases())->mapWithKeys(fn (CoverageStatus $status) => [
+                $status->value => Station::query()
+                    ->where('is_active', true)
+                    ->where('coverage_status', $status->value)
+                    ->count(),
+            ]),
             'lineCount' => Line::count(),
             'stationsWithoutCoordinates' => Station::query()
                 ->where('is_active', true)
@@ -29,6 +35,7 @@ class HomeController extends Controller
                 ->count(),
             'coverageStatuses' => CoverageStatus::cases(),
             'mapConfig' => config('fotometro.map'),
+            'logoExists' => file_exists(public_path('images/logo_fotometro.png')),
         ]);
     }
 }

@@ -68,3 +68,9 @@ La recherche appelle `/api/map/search`, filtre les noms de stations côté PHP a
 - Les tracés ne sont pas officiels.
 - Aucun clustering n'est ajouté dans cette version.
 - Aucun import IDFM ni photographie réelle n'est encore géré.
+
+## API du schema de ligne
+
+`/api/map` expose, pour chaque ligne, les stations ordonnees par `station_line.position`. Chaque station de ligne contient `position`, `branch`, `is_terminus`, ses coordonnees, son statut de couverture et ses correspondances sans repeter la ligne active.
+
+Quand `path_geojson` est `null`, le frontend cadre la ligne a partir des coordonnees de ses stations. Les donnees de demonstration ne fournissent plus de faux traces.
