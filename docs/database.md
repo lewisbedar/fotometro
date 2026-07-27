@@ -13,6 +13,7 @@ La base cible est MySQL ou MariaDB. Les tests automatisés utilisent SQLite en m
 | `color` | varchar(7) | Couleur hexadécimale de ligne |
 | `text_color` | varchar(7) | Couleur de texte adaptée |
 | `sort_order` | smallint unsigned | Ordre d'affichage |
+| `path_geojson` | json nullable | Tracé GeoJSON facultatif |
 | `created_at`, `updated_at` | timestamps |  |
 
 ## Table `stations`
@@ -23,8 +24,8 @@ La base cible est MySQL ou MariaDB. Les tests automatisés utilisent SQLite en m
 | `external_id` | varchar nullable | Unique, prévu pour un futur import |
 | `name` | varchar | Nom de station |
 | `slug` | varchar | Unique |
-| `latitude` | decimal(10,7) | Coordonnée WGS84 |
-| `longitude` | decimal(10,7) | Coordonnée WGS84 |
+| `latitude` | decimal(10,7) nullable | Coordonnée WGS84 |
+| `longitude` | decimal(10,7) nullable | Coordonnée WGS84 |
 | `city` | varchar nullable | Commune |
 | `postal_code` | varchar(10) nullable | Code postal |
 | `district` | varchar nullable | Arrondissement ou secteur |

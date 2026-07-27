@@ -21,6 +21,7 @@ class LineFactory extends Factory
             'color' => fake()->hexColor(),
             'text_color' => '#111111',
             'sort_order' => (int) $code,
+            'path_geojson' => null,
         ];
     }
 }

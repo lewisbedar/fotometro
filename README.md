@@ -2,28 +2,21 @@
 
 fotometro est une application web Laravel pour cataloguer et présenter des photographies des stations du métro parisien.
 
-Cette première version pose uniquement les fondations: authentification administrateur, lignes, stations, relations, données de démonstration, interface provisoire et documentation.
+La page publique principale est désormais un explorateur cartographique: lignes, stations, recherche, filtres de couverture photographique, fiches publiques de stations et fiches publiques de lignes.
 
 ## Technologies
 
 - PHP 8.3 ou supérieur
 - Laravel 13
 - MySQL 8 ou MariaDB compatible
-- Blade
-- Livewire
+- Blade et Livewire
 - Alpine.js
 - Tailwind CSS 4
+- MapLibre GL JS
 - Vite
 - Apache en production
 
-MapLibre GL JS est prévu pour une étape ultérieure.
-
-## Prérequis locaux
-
-- PHP avec les extensions usuelles Laravel: `pdo_mysql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `fileinfo`
-- Composer
-- Node.js et npm, uniquement pour compiler les assets
-- MySQL ou MariaDB
+Node.js sert uniquement à compiler les assets. Aucun serveur Node permanent, Redis, Docker, WebSocket ou service système spécifique n'est requis.
 
 ## Installation locale
 
@@ -32,13 +25,14 @@ composer install
 cp .env.example .env
 php artisan key:generate
 npm install
+php artisan migrate
+php artisan db:seed
+npm run build
 ```
 
-Sous PowerShell, utilisez `npm.cmd install` si l'exécution de scripts bloque `npm.ps1`.
+Sous PowerShell, utilisez `npm.cmd install` et `npm.cmd run build` si `npm.ps1` est bloqué.
 
 ## Configuration MySQL
-
-Créez une base et un utilisateur MySQL, puis renseignez `.env`:
 
 ```dotenv
 DB_CONNECTION=mysql
@@ -49,18 +43,28 @@ DB_USERNAME=fotometro
 DB_PASSWORD=mot-de-passe-local
 ```
 
-## Migration et données de démonstration
+## Configuration de la carte
 
-```bash
-php artisan migrate
-php artisan db:seed
+```dotenv
+FOTOMETRO_MAP_BASEMAP_DRIVER=raster
+FOTOMETRO_MAP_RASTER_URL=https://tile.openstreetmap.org/{z}/{x}/{y}.png
+FOTOMETRO_MAP_RASTER_TILE_SIZE=256
+FOTOMETRO_MAP_STYLE_URL=
+FOTOMETRO_MAP_ATTRIBUTION=© OpenStreetMap contributors
+FOTOMETRO_MAP_CACHE_TTL=300
+FOTOMETRO_MAP_CENTER_LATITUDE=48.8566
+FOTOMETRO_MAP_CENTER_LONGITUDE=2.3522
+FOTOMETRO_MAP_DEFAULT_ZOOM=11.5
+FOTOMETRO_MAP_MAX_ZOOM=19
 ```
 
-Le seeder ajoute les lignes 1, 4, 6 et 14, quelques stations, et au moins une station de correspondance.
+Le driver par défaut est `raster`. En développement et pour les essais, le serveur standard `tile.openstreetmap.org` fournit un fond simple sans clé. Avant une mise en production publique, choisissez un fournisseur de tuiles raster adapté au trafic prévu et conforme à sa politique d'utilisation.
+
+Le driver `style` reste disponible pour tester ultérieurement un style vectoriel MapLibre compatible. Si l'URL requise par le driver choisi est vide, l'application affiche un message propre au lieu d'initialiser une carte cassée. Aucune clé secrète ne doit être commitée.
 
 ## Compte administrateur
 
-L'inscription publique n'existe pas. Le compte administrateur unique est créé par le seeder à partir de ces variables:
+L'inscription publique n'existe pas. Le seeder crée le compte administrateur depuis:
 
 ```dotenv
 ADMIN_NAME="Administrateur fotometro"
@@ -68,19 +72,15 @@ ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=choisir-un-mot-de-passe
 ```
 
-Définissez `ADMIN_PASSWORD` avant `php artisan db:seed`. En local, la valeur de secours est `password`, mais elle ne doit pas être utilisée en production.
+## Pages et routes publiques
 
-## Compilation des ressources
-
-```bash
-npm run build
-```
-
-En développement:
-
-```bash
-npm run dev
-```
+- `/`: explorateur cartographique
+- `/api/map`: données publiques de carte
+- `/api/map/search?q=...`: recherche publique limitée
+- `/stations/{slug}`: fiche publique d'une station
+- `/lignes/{slug}`: fiche publique d'une ligne
+- `/login`: connexion administrateur
+- `/admin`: tableau de bord administrateur
 
 ## Tests
 
@@ -88,14 +88,11 @@ npm run dev
 php artisan test
 ```
 
-Les tests utilisent SQLite en mémoire via `phpunit.xml`.
+Les tests utilisent SQLite en mémoire et désactivent Vite côté requêtes HTTP.
 
-## Pages disponibles
+## Documentation
 
-- `/`: accueil public
-- `/login`: connexion administrateur
-- `/admin`: tableau de bord administrateur protégé
-
-## Déploiement
-
-Voir [docs/deployment-o2switch.md](docs/deployment-o2switch.md) pour un déploiement sur hébergement mutualisé o2switch sans Docker, sans Redis et sans serveur Node.js permanent.
+- [Spécification produit](docs/product-specification.md)
+- [Base de données](docs/database.md)
+- [Carte interactive](docs/map.md)
+- [Déploiement o2switch](docs/deployment-o2switch.md)

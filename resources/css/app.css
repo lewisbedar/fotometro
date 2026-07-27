@@ -13,4 +13,24 @@
         background: #f6f1e8;
         color: #151515;
     }
+
+    [x-cloak] {
+        display: none !important;
+    }
+}
+
+@layer components {
+    #metro-map {
+        min-height: 500px;
+    }
+
+    .maplibregl-popup-content {
+        border-radius: 0.5rem;
+        box-shadow: 0 12px 30px rgb(0 0 0 / 0.16);
+        padding: 0.875rem;
+    }
+
+    .maplibregl-ctrl-attrib {
+        font-size: 0.6875rem;
+    }
 }
