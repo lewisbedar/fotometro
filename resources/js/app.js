@@ -130,13 +130,22 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
         basemapConfig: buildMapConfig(dataset),
         appEnv: dataset.appEnv || 'production',
         selectedLineId: null,
+        selectedStationId: null,
         selectedStation: null,
+        activePanel: null,
+        isFiltersOpen: false,
+        isLinesOpen: false,
+        isLineDiagramOpen: false,
+        progressCollapsed: false,
+        showStations: true,
+        showLineTracks: true,
+        showConnections: true,
+        showEntrances: false,
         enabledStatuses: ['not_started', 'planned', 'in_progress', 'documented', 'complete'],
         searchQuery: '',
         searchResults: [],
         focusedSearchIndex: -1,
         searchLoading: false,
-        mobilePanelOpen: false,
         maplibregl: null,
         mapFatalError: null,
         mapWarnings: [],
@@ -179,6 +188,23 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
 
         get mapUsableMaxZoom() {
             return this.basemapConfig.maxZoom;
+        },
+
+        get selectedLine() {
+            if (! this.selectedLineId) {
+                return null;
+            }
+
+            return this.mapData.lines.find((line) => Number(line.id) === Number(this.selectedLineId)) || null;
+        },
+
+        get allStatusesEnabled() {
+            return this.mapData.coverage_statuses.length > 0
+                && this.mapData.coverage_statuses.every((status) => this.enabledStatuses.includes(status.value));
+        },
+
+        get isSmallScreen() {
+            return window.matchMedia('(max-width: 767px)').matches;
         },
 
         get initialMapZoom() {
@@ -398,26 +424,70 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
 
             this.map.getSource('fotometro-lines')?.setData(this.lineFeatureCollection());
             this.map.getSource('fotometro-stations')?.setData(this.stationFeatureCollection());
+            this.refreshLayerVisibility();
         },
 
-        toggleMobilePanel() {
-            this.mobilePanelOpen = ! this.mobilePanelOpen;
+        refreshLayerVisibility() {
+            if (! this.map) {
+                return;
+            }
 
-            requestAnimationFrame(() => this.map?.resize());
+            if (this.map.getLayer('fotometro-stations-layer')) {
+                this.map.setLayoutProperty('fotometro-stations-layer', 'visibility', this.showStations ? 'visible' : 'none');
+            }
+
+            if (this.map.getLayer('fotometro-lines-layer')) {
+                this.map.setLayoutProperty('fotometro-lines-layer', 'visibility', this.showLineTracks ? 'visible' : 'none');
+            }
+        },
+
+        toggleFiltersPanel() {
+            this.isFiltersOpen = ! this.isFiltersOpen;
+
+            if (this.isFiltersOpen) {
+                this.isLinesOpen = false;
+                this.activePanel = 'filters';
+            } else if (this.activePanel === 'filters') {
+                this.activePanel = null;
+            }
+        },
+
+        toggleLinesPanel() {
+            this.isLinesOpen = ! this.isLinesOpen;
+
+            if (this.isLinesOpen) {
+                this.isFiltersOpen = false;
+                this.activePanel = 'lines';
+            } else if (this.activePanel === 'lines') {
+                this.activePanel = null;
+            }
+        },
+
+        toggleAllStatuses(enabled) {
+            this.enabledStatuses = enabled
+                ? this.mapData.coverage_statuses.map((status) => status.value)
+                : [];
+            this.refreshVisibility();
         },
 
         selectLine(lineId) {
             this.selectedLineId = this.selectedLineId === lineId ? null : lineId;
+            this.selectedStation = null;
+            this.selectedStationId = null;
             this.refreshVisibility();
 
             if (this.selectedLineId === null) {
+                this.isLineDiagramOpen = false;
                 this.fitToVisibleData();
                 return;
             }
 
             const line = this.mapData.lines.find((candidate) => Number(candidate.id) === Number(this.selectedLineId));
 
-            if (line && line !== 'null') {
+            if (line) {
+                this.isLineDiagramOpen = true;
+                this.isLinesOpen = false;
+                this.activePanel = null;
                 this.fitMapToLine(line);
             }
         },
@@ -430,7 +500,10 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
             }
 
             this.selectedStation = station;
-            this.mobilePanelOpen = false;
+            this.selectedStationId = station.id;
+            this.isFiltersOpen = false;
+            this.isLinesOpen = false;
+            this.activePanel = null;
             this.refreshVisibility();
 
             if (this.map && station.coordinates) {
@@ -441,6 +514,8 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
                 });
                 this.openStationPopup(station);
             }
+
+            this.scrollDiagramToStation(station.id);
         },
 
         findStation(stationId) {
@@ -485,19 +560,45 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
         },
 
         clearSelection() {
+            this.clearStationSelection();
+        },
+
+        clearStationSelection() {
             this.selectedStation = null;
+            this.selectedStationId = null;
             this.refreshVisibility();
+        },
+
+        clearLineSelection() {
+            this.selectedLineId = null;
+            this.selectedStation = null;
+            this.selectedStationId = null;
+            this.isLineDiagramOpen = false;
+            this.refreshVisibility();
+            this.fitToVisibleData();
         },
 
         resetFilters() {
             this.selectedLineId = null;
             this.selectedStation = null;
+            this.selectedStationId = null;
             this.enabledStatuses = this.mapData.coverage_statuses.map((status) => status.value);
             this.searchQuery = '';
             this.searchResults = [];
             this.focusedSearchIndex = -1;
+            this.isFiltersOpen = false;
+            this.isLinesOpen = false;
+            this.isLineDiagramOpen = false;
+            this.activePanel = null;
             this.refreshVisibility();
             this.fitToVisibleData();
+        },
+
+        resetExplorer() {
+            this.showStations = true;
+            this.showLineTracks = true;
+            this.showConnections = true;
+            this.resetFilters();
         },
 
         fitToVisibleData() {
@@ -570,8 +671,14 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
         },
 
         getStationsForLine(lineId) {
+            const line = this.mapData.lines.find((candidate) => Number(candidate.id) === Number(lineId));
+
+            if (line?.stations?.length) {
+                return this.orderedLineStations(line);
+            }
+
             return this.mapData.stations.filter((station) => this.normalizeLines(station.lines).some(
-                (line) => Number(line.id) === Number(lineId),
+                (candidate) => Number(candidate.id) === Number(lineId),
             ));
         },
 
@@ -645,6 +752,97 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
             }
 
             this.selectStation(this.searchResults[this.focusedSearchIndex].id, true);
+        },
+
+        closeSearch() {
+            this.searchResults = [];
+            this.focusedSearchIndex = -1;
+
+            if (this.activePanel === 'search') {
+                this.activePanel = null;
+            }
+        },
+
+        focusSearch() {
+            this.$refs.searchInput?.focus();
+            this.activePanel = 'search';
+        },
+
+        handleEscape() {
+            if (this.activePanel === 'search') {
+                this.closeSearch();
+                return;
+            }
+
+            if (this.isLinesOpen) {
+                this.isLinesOpen = false;
+                this.activePanel = null;
+                return;
+            }
+
+            if (this.isFiltersOpen) {
+                this.isFiltersOpen = false;
+                this.activePanel = null;
+                return;
+            }
+
+            if (this.selectedStation) {
+                this.clearStationSelection();
+            }
+        },
+
+        selectStationFromDiagram(stationId) {
+            this.selectStation(Number(stationId), true);
+        },
+
+        scrollDiagramToStation(stationId) {
+            requestAnimationFrame(() => {
+                const safeId = Number(stationId);
+
+                if (! Number.isInteger(safeId)) {
+                    return;
+                }
+
+                const selector = `[data-station-id="${safeId}"]`;
+                this.$refs.lineDiagramScroller?.querySelector(selector)?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+                this.$refs.lineDiagramMobileScroller?.querySelector(selector)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            });
+        },
+
+        orderedLineStations(line) {
+            return [...(line?.stations || [])].sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
+        },
+
+        lineTerminusLabel(line) {
+            const termini = this.orderedLineStations(line).filter((station) => station.is_terminus);
+
+            if (termini.length >= 2) {
+                return `${termini[0].name} - ${termini[termini.length - 1].name}`;
+            }
+
+            if (termini.length === 1) {
+                return `Terminus: ${termini[0].name}`;
+            }
+
+            const stations = this.orderedLineStations(line);
+
+            if (stations.length >= 2) {
+                return `${stations[0].name} - ${stations[stations.length - 1].name}`;
+            }
+
+            return 'Terminus a completer';
+        },
+
+        coverageNodeClass(station) {
+            return {
+                [`status-${station.coverage_status?.value || 'not_started'}`]: true,
+                'is-selected': Number(this.selectedStationId) === Number(station.id),
+                'is-terminus': Boolean(station.is_terminus),
+            };
+        },
+
+        safeLineColor(value) {
+            return /^#[0-9a-fA-F]{3,8}$/.test(value || '') ? value : '#151515';
         },
 
         normalizeLines(lines) {

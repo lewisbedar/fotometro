@@ -96,3 +96,7 @@ Les tests utilisent SQLite en mémoire et désactivent Vite côté requêtes HTT
 - [Base de données](docs/database.md)
 - [Carte interactive](docs/map.md)
 - [Déploiement o2switch](docs/deployment-o2switch.md)
+
+## Interface cartographique plein ecran
+
+L'accueil utilise une carte MapLibre plein ecran avec panneaux flottants: barre superieure, recherche, progression, filtres, selection de lignes, panneaux contextuels et schema dynamique de ligne. Voir [Interface cartographique plein ecran](docs/ui-map-explorer.md).

@@ -44,3 +44,9 @@ L'administrateur se connecte avec un compte unique et consulte le tableau de bor
 - Couleurs des lignes stockées en base
 - Formes circulaires pour les stations et pastilles
 - Aucune reproduction du logo, du plan officiel, des pictogrammes ou typographies propriétaires de la RATP
+
+## Interface carte plein ecran
+
+L'accueil est une carte MapLibre plein ecran avec des panneaux flottants. La barre superieure regroupe le logo ou son fallback, la recherche et les actions. Les panneaux de progression, filtres, lignes, station et ligne apparaissent au-dessus de la carte sans recreer MapLibre.
+
+La selection de ligne ouvre un schema dynamique construit depuis les donnees Laravel. Le schema est horizontal sur desktop et vertical sur mobile. Les stations sont triees par position de pivot, les terminus sont signales, les correspondances ne repetent pas la ligne active et les statuts utilisent des formes en plus des couleurs.
