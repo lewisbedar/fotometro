@@ -74,3 +74,6 @@ La recherche appelle `/api/map/search`, filtre les noms de stations côté PHP a
 `/api/map` expose, pour chaque ligne, les stations ordonnees par `station_line.position`. Chaque station de ligne contient `position`, `branch`, `is_terminus`, ses coordonnees, son statut de couverture et ses correspondances sans repeter la ligne active.
 
 Quand `path_geojson` est `null`, le frontend cadre la ligne a partir des coordonnees de ses stations. Les donnees de demonstration ne fournissent plus de faux traces.
+# Donnees IDFM
+
+`/api/map` expose maintenant les identifiants `external_id` des lignes et stations, le nombre d'acces connus, et les stations de chaque ligne ordonnees par `station_line.position` avec `branch`, `is_terminus`, statut de couverture et correspondances. `source_payload` reste strictement interne.

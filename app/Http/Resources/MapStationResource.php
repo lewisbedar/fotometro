@@ -16,6 +16,7 @@ class MapStationResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'external_id' => $this->external_id,
             'name' => $this->name,
             'slug' => $this->slug,
             'latitude' => $this->latitude === null ? null : (float) $this->latitude,
@@ -33,9 +34,11 @@ class MapStationResource extends JsonResource
                 'color' => $status->color(),
             ],
             'url' => route('stations.show', $this->slug),
+            'access_count' => $this->accesses_count,
             'lines' => $this->whenLoaded('lines', fn () => $this->lines
                 ->map(fn ($line) => [
                     'id' => $line->id,
+                    'external_id' => $line->external_id,
                     'code' => $line->code,
                     'name' => $line->name,
                     'slug' => $line->slug,

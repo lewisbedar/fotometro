@@ -274,7 +274,7 @@
         grid-auto-flow: column;
         grid-auto-columns: minmax(6rem, 8rem);
         align-items: start;
-        padding: 2.75rem 1rem 4.75rem;
+        padding: 2.75rem 1rem 6rem;
         position: relative;
     }
 
@@ -357,8 +357,9 @@
     .diagram-station-name {
         display: block;
         max-width: 5.5rem;
+        margin-top: 1.45rem;
         transform: rotate(-38deg);
-        transform-origin: top left;
+        transform-origin: top center;
         font-size: 0.7rem;
         line-height: 1.1;
         text-align: left;

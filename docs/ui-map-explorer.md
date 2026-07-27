@@ -33,3 +33,10 @@ La barre superieure affiche `public/images/logo_fotometro.png` si le fichier exi
 ## Donnees futures
 
 Les entrees, sorties et photographies ne sont pas inventees. Les panneaux affichent une mention "bientot disponible" tant que ces donnees ne sont pas disponibles. L'import IDFM, les acces reels et les branches complexes restent hors perimetre.
+# Donnees importees
+
+L'explorateur consomme `/api/map`. Les lignes exposent leurs stations ordonnees par `station_line.position`, avec `branch`, `is_terminus`, statuts de couverture et correspondances sans repetition de la ligne active.
+
+Le logo horizontal attendu est `public/images/logo_fotometro.png`. Si le fichier est absent, la barre superieure affiche le texte `fotometro` sans image cassee.
+
+Les noms du schema de ligne sont places sous l'axe et sous les noeuds; les correspondances restent sous le nom de station. Les futures branches IDFM sont conservees dans les donnees via `branch`, mais la representation complexe des embranchements reste une evolution separee.

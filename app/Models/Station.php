@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'external_id',
@@ -22,6 +23,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
     'description',
     'coverage_status',
     'is_active',
+    'source',
+    'source_payload',
+    'source_updated_at',
 ])]
 class Station extends Model
 {
@@ -36,6 +40,8 @@ class Station extends Model
             'opening_date' => 'date',
             'coverage_status' => CoverageStatus::class,
             'is_active' => 'boolean',
+            'source_payload' => 'array',
+            'source_updated_at' => 'datetime',
         ];
     }
 
@@ -45,5 +51,22 @@ class Station extends Model
             ->withPivot(['position', 'branch', 'is_terminus'])
             ->withTimestamps()
             ->orderBy('sort_order');
+    }
+
+    public function accesses(): BelongsToMany
+    {
+        return $this->belongsToMany(StationAccess::class, 'access_station')
+            ->withPivot(['source'])
+            ->withTimestamps();
+    }
+
+    public function areas(): HasMany
+    {
+        return $this->hasMany(StationArea::class);
+    }
+
+    public function stops(): HasMany
+    {
+        return $this->hasMany(StationStop::class);
     }
 }

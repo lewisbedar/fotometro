@@ -12,6 +12,7 @@ class MapLineResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'external_id' => $this->external_id,
             'code' => $this->code,
             'name' => $this->name,
             'slug' => $this->slug,
@@ -42,6 +43,7 @@ class MapLineResource extends JsonResource
 
                     return [
                         'id' => $station->id,
+                        'external_id' => $station->external_id,
                         'name' => $station->name,
                         'slug' => $station->slug,
                         'latitude' => $station->latitude === null ? null : (float) $station->latitude,
@@ -52,6 +54,7 @@ class MapLineResource extends JsonResource
                         'position' => (int) $station->pivot->position,
                         'branch' => $station->pivot->branch,
                         'is_terminus' => (bool) $station->pivot->is_terminus,
+                        'access_count' => $station->accesses_count,
                         'coverage_status' => [
                             'value' => $status->value,
                             'label' => $status->label(),
@@ -62,6 +65,19 @@ class MapLineResource extends JsonResource
                             ->reject(fn ($line) => $line->id === $this->id)
                             ->map(fn ($line) => [
                                 'id' => $line->id,
+                                'code' => $line->code,
+                                'name' => $line->name,
+                                'slug' => $line->slug,
+                                'color' => $line->color,
+                                'text_color' => $line->text_color,
+                            ])
+                            ->values()
+                            ->all(),
+                        'correspondances' => $station->lines
+                            ->reject(fn ($line) => $line->id === $this->id)
+                            ->map(fn ($line) => [
+                                'id' => $line->id,
+                                'external_id' => $line->external_id,
                                 'code' => $line->code,
                                 'name' => $line->name,
                                 'slug' => $line->slug,

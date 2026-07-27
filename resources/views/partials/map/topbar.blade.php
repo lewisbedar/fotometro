@@ -1,7 +1,7 @@
 <header class="fullscreen-map-topbar" aria-label="Navigation cartographique">
     <button type="button" class="map-glass map-logo-block" x-on:click="resetExplorer()" aria-label="Reinitialiser la carte">
         @if ($logoExists)
-            <img src="{{ asset('images/logo_fotometro.png') }}" alt="fotometro" class="h-10 w-auto">
+            <img src="{{ asset('images/logo_fotometro.png') }}" alt="fotometro" class="h-10 max-w-[240px] object-contain">
         @else
             <span class="grid h-10 w-10 place-items-center rounded-full bg-[#12326b] text-lg font-bold text-white">fm</span>
             <span>

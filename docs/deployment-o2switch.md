@@ -103,3 +103,17 @@ php artisan up
 ```
 
 Compilez les assets localement ou sur le serveur avec `npm run build`, puis conservez uniquement le résultat statique servi par Apache.
+# Import IDFM sur o2switch
+
+L'import du reseau metro reste compatible avec l'hebergement mutualise: il s'agit d'une commande Artisan ponctuelle.
+
+```bash
+php artisan fotometro:import-network --dry-run
+php artisan fotometro:import-network
+```
+
+Utiliser `--dry-run` avant toute synchronisation reelle, verifier le rapport, puis lancer l'import sans option si les donnees sont coherentes. Aucun processus resident, Redis, Docker ou worker n'est requis. Le cache de `/api/map` est invalide apres un import reussi.
+
+Le dataset `arrets-lignes` est telecharge via `/exports/csv?limit=-1` dans le repertoire temporaire configure par `FOTOMETRO_IDFM_TEMP_DIR`, puis supprime apres succes lorsque `APP_DEBUG=false`.
+
+Pendant un diagnostic local, `/debug/database` permet de comparer la connexion web avec la connexion CLI. Cette route retourne 404 hors local et doit etre retiree quand le diagnostic MySQL/cache est termine.

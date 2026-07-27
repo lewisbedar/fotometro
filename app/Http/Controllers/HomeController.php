@@ -18,7 +18,7 @@ class HomeController extends Controller
             ->count();
 
         return view('home', [
-            'lines' => Line::withCount('stations')->orderBy('sort_order')->get(),
+            'lines' => Line::query()->where('is_active', true)->withCount('stations')->orderBy('sort_order')->get(),
             'stationCount' => $stationCount,
             'documentedStationCount' => $documentedStationCount,
             'progressPercentage' => $stationCount === 0 ? 0 : (int) round(($documentedStationCount / $stationCount) * 100),
@@ -28,7 +28,7 @@ class HomeController extends Controller
                     ->where('coverage_status', $status->value)
                     ->count(),
             ]),
-            'lineCount' => Line::count(),
+            'lineCount' => Line::query()->where('is_active', true)->count(),
             'stationsWithoutCoordinates' => Station::query()
                 ->where('is_active', true)
                 ->where(fn ($query) => $query->whereNull('latitude')->orWhereNull('longitude'))

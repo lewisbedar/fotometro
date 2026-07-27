@@ -14,8 +14,8 @@ return new class extends Migration
             $table->string('external_id')->nullable()->unique();
             $table->string('name');
             $table->string('slug')->unique();
-            $table->decimal('latitude', 10, 7);
-            $table->decimal('longitude', 10, 7);
+            $table->decimal('latitude', 10, 7)->nullable();
+            $table->decimal('longitude', 10, 7)->nullable();
             $table->string('city')->nullable();
             $table->string('postal_code', 10)->nullable();
             $table->string('district')->nullable();

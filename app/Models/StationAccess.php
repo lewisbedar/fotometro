@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Database\Factories\LineFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,27 +9,29 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 #[Fillable([
     'external_id',
-    'code',
     'name',
-    'slug',
-    'color',
-    'text_color',
-    'sort_order',
-    'path_geojson',
+    'reference',
+    'latitude',
+    'longitude',
+    'access_type',
+    'street',
+    'description',
+    'wheelchair_accessible',
     'is_active',
     'source',
     'source_payload',
     'source_updated_at',
 ])]
-class Line extends Model
+class StationAccess extends Model
 {
-    /** @use HasFactory<LineFactory> */
     use HasFactory;
 
     protected function casts(): array
     {
         return [
-            'path_geojson' => 'array',
+            'latitude' => 'decimal:7',
+            'longitude' => 'decimal:7',
+            'wheelchair_accessible' => 'boolean',
             'is_active' => 'boolean',
             'source_payload' => 'array',
             'source_updated_at' => 'datetime',
@@ -39,9 +40,8 @@ class Line extends Model
 
     public function stations(): BelongsToMany
     {
-        return $this->belongsToMany(Station::class, 'station_line')
-            ->withPivot(['position', 'branch', 'is_terminus'])
-            ->withTimestamps()
-            ->orderByPivot('position');
+        return $this->belongsToMany(Station::class, 'access_station')
+            ->withPivot(['source'])
+            ->withTimestamps();
     }
 }

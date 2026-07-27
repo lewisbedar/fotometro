@@ -15,6 +15,7 @@ class LineFactory extends Factory
         $code = (string) fake()->unique()->numberBetween(1, 14);
 
         return [
+            'external_id' => fake()->optional()->uuid(),
             'code' => $code,
             'name' => "Ligne {$code}",
             'slug' => Str::slug("ligne {$code}"),
@@ -22,6 +23,7 @@ class LineFactory extends Factory
             'text_color' => '#111111',
             'sort_order' => (int) $code,
             'path_geojson' => null,
+            'is_active' => true,
         ];
     }
 }
