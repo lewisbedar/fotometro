@@ -12,10 +12,10 @@ class LineStationSeeder extends Seeder
     public function run(): void
     {
         $lines = collect([
-            ['code' => '1', 'name' => 'Ligne 1', 'slug' => 'ligne-1', 'color' => '#FFCD00', 'text_color' => '#111111', 'sort_order' => 1],
-            ['code' => '4', 'name' => 'Ligne 4', 'slug' => 'ligne-4', 'color' => '#A0006E', 'text_color' => '#FFFFFF', 'sort_order' => 4],
-            ['code' => '6', 'name' => 'Ligne 6', 'slug' => 'ligne-6', 'color' => '#79BB92', 'text_color' => '#111111', 'sort_order' => 6],
-            ['code' => '14', 'name' => 'Ligne 14', 'slug' => 'ligne-14', 'color' => '#62259D', 'text_color' => '#FFFFFF', 'sort_order' => 14],
+            ['code' => '1', 'name' => 'Ligne 1', 'slug' => 'ligne-1', 'color' => '#FFCD00', 'text_color' => '#111111', 'sort_order' => 1, 'path_geojson' => null],
+            ['code' => '4', 'name' => 'Ligne 4', 'slug' => 'ligne-4', 'color' => '#A0006E', 'text_color' => '#FFFFFF', 'sort_order' => 4, 'path_geojson' => null],
+            ['code' => '6', 'name' => 'Ligne 6', 'slug' => 'ligne-6', 'color' => '#79BB92', 'text_color' => '#111111', 'sort_order' => 6, 'path_geojson' => null],
+            ['code' => '14', 'name' => 'Ligne 14', 'slug' => 'ligne-14', 'color' => '#62259D', 'text_color' => '#FFFFFF', 'sort_order' => 14, 'path_geojson' => null],
         ])->mapWithKeys(fn (array $line) => [
             $line['code'] => Line::updateOrCreate(['code' => $line['code']], $line),
         ]);

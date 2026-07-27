@@ -2,44 +2,45 @@
 
 ## Objectif
 
-fotometro catalogue et présente des photographies des stations du métro parisien. L'application doit permettre de structurer les stations, leurs lignes, leur statut de couverture photographique, puis d'ajouter plus tard une carte et une gestion d'images.
+fotometro catalogue et présente des photographies des stations du métro parisien. L'application structure les lignes, les stations, leur statut de couverture photographique et une première exploration cartographique publique.
 
-## Périmètre de cette étape
+## Périmètre actuel
 
-- Application Laravel initialisée
-- Interface publique provisoire
-- Connexion administrateur simple
-- Inscription publique absente
-- Tableau de bord administrateur provisoire
-- Modèles `Line` et `Station`
-- Relation plusieurs-à-plusieurs entre lignes et stations
-- Seeder de démonstration
-- Tests de relations
+- Accueil transformé en explorateur MapLibre
+- Affichage des stations actives avec coordonnées
+- Affichage des tracés disponibles pour les lignes
+- Recherche de station accent-insensible
+- Sélection de ligne et de station
+- Fiche publique de station
+- Fiche publique de ligne
+- Résumé de progression photographique
+- Authentification administrateur simple
+- Données de démonstration
 
 ## Hors périmètre
 
-- Carte MapLibre
-- Import de données IDFM
-- Upload, traitement ou stockage des photographies
-- Rôles avancés
-- Files d'attente spécialisées
-- Redis, Docker ou services système permanents
+- Import automatique Île-de-France Mobilités
+- Gestion des photographies
+- Galeries réelles
+- Filigranes
+- Administration complète des lignes et stations
+- Déploiement automatisé o2switch
 
 ## Utilisateurs
 
 ### Visiteur
 
-Le visiteur consulte la page publique et voit le nom du projet, la vocation du catalogue, les lignes disponibles et le nombre de stations.
+Le visiteur explore la carte, filtre par ligne ou statut, recherche une station, ouvre une fiche de station ou consulte la progression d'une ligne.
 
 ### Administrateur
 
-L'administrateur se connecte avec un compte unique créé par seed ou commande serveur. Il consulte les indicateurs initiaux du catalogue.
+L'administrateur se connecte avec un compte unique et consulte le tableau de bord provisoire.
 
-## Identité visuelle provisoire
+## Identité visuelle
 
 - Fond clair légèrement crème
 - Surfaces blanches
 - Texte presque noir
 - Couleurs des lignes stockées en base
-- Interface responsive
-- Aucun logo, police ou élément propriétaire de la RATP
+- Formes circulaires pour les stations et pastilles
+- Aucune reproduction du logo, du plan officiel, des pictogrammes ou typographies propriétaires de la RATP

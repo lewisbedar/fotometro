@@ -33,8 +33,16 @@ DB_USERNAME=nom_utilisateur
 DB_PASSWORD=mot_de_passe
 
 SESSION_DRIVER=database
-CACHE_STORE=database
+CACHE_STORE=file
 QUEUE_CONNECTION=database
+
+FOTOMETRO_MAP_BASEMAP_DRIVER=raster
+FOTOMETRO_MAP_RASTER_URL=https://fournisseur.example/{z}/{x}/{y}.png
+FOTOMETRO_MAP_RASTER_TILE_SIZE=256
+FOTOMETRO_MAP_STYLE_URL=
+FOTOMETRO_MAP_ATTRIBUTION="© fournisseur du fond de carte"
+FOTOMETRO_MAP_CACHE_TTL=300
+FOTOMETRO_MAP_MAX_ZOOM=19
 
 ADMIN_NAME="Administrateur fotometro"
 ADMIN_EMAIL=admin@example.com
@@ -43,11 +51,12 @@ ADMIN_PASSWORD=mot-de-passe-fort
 
 Ne versionnez jamais le `.env` de production.
 
+Le serveur standard `tile.openstreetmap.org` convient au développement et aux essais, mais ne doit pas être retenu par défaut pour une mise en production publique sans vérifier sa politique d'utilisation. Choisissez un fournisseur de tuiles raster compatible avec le volume et l'usage réel du site.
+
 ## Installation sur le serveur
 
 ```bash
 composer install --no-dev --optimize-autoloader
-php artisan key:generate --force
 php artisan migrate --force
 php artisan db:seed --force
 php artisan config:cache
@@ -55,7 +64,11 @@ php artisan route:cache
 php artisan view:cache
 ```
 
-Si `APP_KEY` est déjà définie, ne relancez pas `key:generate`.
+Si `APP_KEY` n'est pas déjà définie, générez-la avec `php artisan key:generate --force`.
+
+## Carte
+
+MapLibre GL JS est compilé par Vite. Aucun serveur Node.js permanent n'est nécessaire en production. Vérifiez que le fournisseur du style de carte autorise l'usage prévu, que l'attribution est affichée, et qu'aucune clé privée n'est stockée dans le dépôt.
 
 ## Cron
 
