@@ -5,6 +5,7 @@ fotometro peut importer le reseau metro depuis des jeux de donnees publics d'Ile
 ## Sources publiques
 
 - Arrets et lignes: `https://data.iledefrance-mobilites.fr/explore/dataset/arrets-lignes/`
+- Referentiel des lignes: `https://data.iledefrance-mobilites.fr/explore/dataset/referentiel-des-lignes/`
 - Traces des lignes: `https://data.iledefrance-mobilites.fr/explore/dataset/traces-des-lignes-de-transport-en-commun-idfm/`
 - Offre GTFS IDFM: `https://prim.iledefrance-mobilites.fr/fr/jeux-de-donnees/offre-horaires-tc-gtfs-idfm`
 - Referentiel des arrets: acces: `https://www.data.gouv.fr/fr/datasets/referentiel-des-arrets-acces/`
@@ -24,6 +25,7 @@ Le CSV a ete retenu pour lire le fichier progressivement depuis `storage/app/idf
 
 ```dotenv
 FOTOMETRO_IDFM_ARRETS_LIGNES_URL=https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/arrets-lignes/records?limit=100
+FOTOMETRO_IDFM_LINES_URL=https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/referentiel-des-lignes/records?limit=100
 FOTOMETRO_IDFM_TRACES_URL=https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/traces-des-lignes-de-transport-en-commun-idfm/records?limit=100
 FOTOMETRO_IDFM_ACCESSES_URL=
 FOTOMETRO_IDFM_ACCESS_RELATIONS_URL=
@@ -41,12 +43,16 @@ php artisan fotometro:import-network --dry-run
 php artisan fotometro:import-network --only=lines
 php artisan fotometro:import-network --only=stations
 php artisan fotometro:import-network --only=accesses
+php artisan fotometro:import-network --only=gtfs
+php artisan fotometro:import-network --only=topology
 php artisan fotometro:import-network --skip-traces
 php artisan fotometro:import-network --skip-accesses
 php artisan fotometro:import-network --force
 ```
 
 `--dry-run` execute les operations dans une transaction puis annule les changements. `--force` transforme les erreurs en rapport lisible au lieu d'interrompre brutalement l'exploitation.
+
+`--only=lines` utilise le referentiel des lignes IDFM, notamment les champs `colourweb_hexa` et `textcolourweb_hexa`. Ces valeurs sont la source prioritaire des couleurs de lignes. Si elles sont absentes ou invalides, l'import conserve la couleur deja stockee en base, puis utilise en dernier recours la palette metro centralisee dans le service d'import.
 
 ## Regles de securite des donnees
 
@@ -95,3 +101,25 @@ L'import peut etre lance manuellement en SSH ou par tache cron ponctuelle:
 ```
 
 Commencer par `--dry-run`, verifier le rapport, puis lancer l'import reel. Aucun Redis, Docker, supervisor ou processus resident n'est requis.
+# Ordre GTFS
+
+L'ordre des stations est reconstruit avec le GTFS officiel IDFM `offre-horaires-tc-gtfs-idfm`. La configuration par defaut lit la metadonnee OpenData, recupere l'URL du fichier `IDFM-gtfs.zip`, puis traite localement `routes.txt`, `trips.txt`, `stop_times.txt` et `stops.txt`.
+
+```bash
+php artisan fotometro:import-network --only=gtfs
+php artisan fotometro:import-network --only=gtfs --dry-run
+```
+
+Strategie:
+
+- `routes.txt` associe `route_id` GTFS a `lines.external_id` via `IdfmIdentifier`.
+- `trips.txt` conserve les trips des lignes metro deja importees.
+- `stop_times.txt` est lu en flux et convertit chaque `stop_id` en `StationStop`, puis en station publique.
+- Les repetitions techniques consecutives et les doublons de station publique sont retires.
+- Les patterns inverses sont dededupliques.
+- Les sequences les plus longues sont retenues; les services courts inclus dans une sequence plus longue sont ignores.
+- Plusieurs longues sequences non incluses les unes dans les autres deviennent des branches `main`, `branch-a`, `branch-b`, etc.
+
+`station_line` conserve une seule occurrence Station-Ligne pour les relations generales. Les schemas publics utilisent maintenant `line_station_sequences`, qui accepte plusieurs occurrences d'une meme station dans plusieurs sequences.
+
+L'orientation canonique est appliquee depuis `config/fotometro.php`, section `line_orientation`, puis un fallback geographique est utilise si aucune regle ne matche. Voir `docs/line-topology.md` pour les types `simple`, `branched`, `loop` et `partial-loop`.

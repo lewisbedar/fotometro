@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Enums\CoverageStatus;
+use App\Services\Map\LineTopologyBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +22,7 @@ class MapLineResource extends JsonResource
             'station_count' => $this->whenCounted('stations'),
             'url' => route('lines.show', $this->slug),
             'path_geojson' => $this->path_geojson,
+            'topology' => app(LineTopologyBuilder::class)->build($this->resource),
             'progress' => $this->whenLoaded('stations', function () {
                 $total = $this->stations->count();
                 $documented = $this->stations
@@ -35,8 +37,23 @@ class MapLineResource extends JsonResource
                     'percentage' => $total === 0 ? 0 : (int) round(($documented / $total) * 100),
                 ];
             }),
-            'stations' => $this->whenLoaded('stations', fn () => $this->stations
-                ->map(function ($station) {
+            'branches' => $this->whenLoaded('stations', fn () => $this->lineStationsPayload()
+                ->groupBy(fn (array $station) => $station['branch'] ?? 'main')
+                ->map(fn ($stations, string $branch) => [
+                    'key' => $branch,
+                    'label' => $branch === 'main' ? 'Tronc commun' : $branch,
+                    'stations' => $stations->values()->all(),
+                ])
+                ->values()
+                ->all(), []),
+            'stations' => $this->whenLoaded('stations', fn () => $this->lineStationsPayload()->values()->all(), []),
+        ];
+    }
+
+    private function lineStationsPayload()
+    {
+        return $this->stations
+            ->map(function ($station) {
                     $status = $station->coverage_status instanceof CoverageStatus
                         ? $station->coverage_status
                         : CoverageStatus::from($station->coverage_status);
@@ -88,9 +105,10 @@ class MapLineResource extends JsonResource
                             ->all(),
                     ];
                 })
-                ->sortBy('position')
-                ->values()
-                ->all(), []),
-        ];
+                ->sortBy([
+                    ['position', 'asc'],
+                    ['branch', 'asc'],
+                    ['name', 'asc'],
+                ]);
     }
 }

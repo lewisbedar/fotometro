@@ -20,4 +20,15 @@ class IdfmIdentifier
 
         return $identifier;
     }
+
+    public static function stop(mixed $value): ?string
+    {
+        $identifier = strtoupper(trim((string) $value, " \t\n\r\0\x0B\"'"));
+
+        if ($identifier === '') {
+            return null;
+        }
+
+        return preg_replace('/^IDFM\s*:\s*/', '', $identifier) ?? $identifier;
+    }
 }

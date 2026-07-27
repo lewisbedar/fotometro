@@ -7,6 +7,7 @@ use App\Http\Controllers\MapDataController;
 use App\Http\Controllers\PublicLineController;
 use App\Http\Controllers\PublicStationController;
 use App\Http\Controllers\StationSearchController;
+use App\Http\Resources\MapLineResource;
 use App\Models\Line;
 use App\Models\Station;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,30 @@ Route::get('/debug/database', fn () => app()->isLocal()
         'station_line_relations' => DB::table('station_line')->count(),
     ])
     : abort(404))->name('debug.database');
+Route::get('/debug/line-diagrams', function () {
+    if (! app()->isLocal()) {
+        abort(404);
+    }
+
+    $lines = Line::query()
+        ->where('is_active', true)
+        ->with(['stations' => fn ($query) => $query
+            ->where('is_active', true)
+            ->with(['lines' => fn ($lineQuery) => $lineQuery->where('is_active', true)->orderBy('sort_order')])
+            ->withCount('accesses')])
+        ->with(['stationSequences' => fn ($query) => $query
+            ->with(['station' => fn ($stationQuery) => $stationQuery
+                ->where('is_active', true)
+                ->with(['lines' => fn ($lineQuery) => $lineQuery->where('is_active', true)->orderBy('sort_order')])
+                ->withCount('accesses')])])
+        ->withCount('stations')
+        ->orderBy('sort_order')
+        ->get();
+
+    return view('debug.line-diagrams', [
+        'lines' => MapLineResource::collection($lines)->resolve(),
+    ]);
+})->name('debug.line-diagrams');
 Route::get('/api/map', MapDataController::class)->name('api.map');
 Route::get('/api/map/search', StationSearchController::class)->middleware('throttle:30,1')->name('api.map.search');
 Route::get('/stations/{station:slug}', [PublicStationController::class, 'show'])->name('stations.show');

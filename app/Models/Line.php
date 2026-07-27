@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'external_id',
@@ -43,5 +44,12 @@ class Line extends Model
             ->withPivot(['position', 'branch', 'is_terminus'])
             ->withTimestamps()
             ->orderByPivot('position');
+    }
+
+    public function stationSequences(): HasMany
+    {
+        return $this->hasMany(LineStationSequence::class)
+            ->orderBy('sequence_key')
+            ->orderBy('position');
     }
 }

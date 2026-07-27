@@ -258,14 +258,93 @@ class IdfmNetworkImportTest extends TestCase
         $this->assertArrayNotHasKey('source_payload', $station);
     }
 
+    public function test_line_colors_are_imported_from_idfm_colourweb_fields(): void
+    {
+        app(NetworkImporter::class)->import([
+            'lines' => [
+                [
+                    'id_line' => 'IDFM:C01371',
+                    'shortname_line' => '1',
+                    'name_line' => 'Ligne 1',
+                    'transportmode' => 'metro',
+                    'colourweb_hexa' => 'ffcd00',
+                    'textcolourweb_hexa' => '111111',
+                ],
+                [
+                    'id_line' => 'IDFM:C02874',
+                    'shortname_line' => '15',
+                    'name_line' => 'Ligne 15',
+                    'transportmode' => 'metro',
+                    'colourweb_hexa' => 'AAAAAA',
+                    'textcolourweb_hexa' => '000000',
+                ],
+            ],
+        ], ['only' => 'lines']);
+
+        $line = Line::query()->where('code', '1')->firstOrFail();
+
+        $this->assertSame('#FFCD00', $line->color);
+        $this->assertSame('#111111', $line->text_color);
+        $this->assertDatabaseMissing('lines', ['code' => '15']);
+        $this->getJson('/api/map')
+            ->assertOk()
+            ->assertJsonPath('lines.0.color', '#FFCD00')
+            ->assertJsonPath('lines.0.text_color', '#111111');
+    }
+
+    public function test_line_color_import_keeps_existing_invalid_values_and_falls_back_last(): void
+    {
+        Line::factory()->create([
+            'external_id' => 'C01075',
+            'code' => '5',
+            'name' => 'Ligne 5',
+            'slug' => 'ligne-5',
+            'color' => '#123456',
+            'text_color' => '#654321',
+            'source' => 'idfm',
+        ]);
+
+        $report = app(NetworkImporter::class)->import([
+            'lines' => [
+                [
+                    'id_line' => 'IDFM:C01075',
+                    'shortname_line' => '5',
+                    'name_line' => 'Ligne 5',
+                    'transportmode' => 'metro',
+                    'colourweb_hexa' => 'not-a-color',
+                    'textcolourweb_hexa' => '',
+                ],
+                [
+                    'id_line' => 'IDFM:C01390',
+                    'shortname_line' => '14',
+                    'name_line' => 'Ligne 14',
+                    'transportmode' => 'metro',
+                    'colourweb_hexa' => '',
+                    'textcolourweb_hexa' => '',
+                ],
+            ],
+        ], ['only' => 'lines']);
+
+        $lineFive = Line::query()->where('code', '5')->firstOrFail();
+        $lineFourteen = Line::query()->where('code', '14')->firstOrFail();
+
+        $this->assertSame('#123456', $lineFive->color);
+        $this->assertSame('#654321', $lineFive->text_color);
+        $this->assertSame('#62259D', $lineFourteen->color);
+        $this->assertSame('#FFFFFF', $lineFourteen->text_color);
+        $this->assertSame(1, $report->lineInvalidColorsIgnored);
+        $this->assertGreaterThanOrEqual(1, $report->lineColorsKept);
+        $this->assertGreaterThanOrEqual(2, $report->lineColorFallbacksUsed);
+    }
+
     public function test_line_without_geolocated_station_remains_safe_for_api(): void
     {
         app(NetworkImporter::class)->import([
             'arrets_lignes' => [
                 [
-                    'route_id' => 'IDFM:LINE:99',
-                    'shortname' => '99',
-                    'route_long_name' => 'Ligne 99',
+                    'route_id' => 'IDFM:LINE:2',
+                    'shortname' => '2',
+                    'route_long_name' => 'Ligne 2',
                     'mode' => 'metro',
                     'stop_id' => 'IDFM:STOP:VOID',
                     'stop_name' => 'Station sans coordonnees',
@@ -277,7 +356,7 @@ class IdfmNetworkImportTest extends TestCase
 
         $this->getJson('/api/map')
             ->assertOk()
-            ->assertJsonPath('lines.0.code', '99')
+            ->assertJsonPath('lines.0.code', '2')
             ->assertJsonPath('lines.0.progress.total', 0)
             ->assertJsonPath('progress.stations_without_coordinates', 0);
         $this->assertDatabaseHas('station_stops', ['external_id' => 'IDFM:STOP:VOID', 'station_id' => null]);
