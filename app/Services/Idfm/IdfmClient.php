@@ -16,7 +16,11 @@ class IdfmClient
         $datasets = [];
         $only = $options['only'] ?? null;
 
-        if ($only === null || in_array($only, ['lines', 'stations'], true)) {
+        if ($only === null || $only === 'lines') {
+            $datasets['lines'] = $this->fetchComplete(config('fotometro.idfm.lines_url'));
+        }
+
+        if ($only === null || $only === 'stations') {
             $datasets['arrets_lignes'] = $this->fetchComplete(config('fotometro.idfm.arrets_lignes_url'));
         }
 
@@ -42,7 +46,48 @@ class IdfmClient
             }
         }
 
+        if ($only === null || $only === 'gtfs') {
+            $datasets['gtfs_archive'] = $this->fetchGtfsArchive(config('fotometro.idfm.gtfs_url'));
+        }
+
         return $datasets;
+    }
+
+    public function fetchGtfsArchive(?string $url): array
+    {
+        if (blank($url)) {
+            return [];
+        }
+
+        if (str_starts_with($url, 'file://')) {
+            return ['path' => substr($url, 7)];
+        }
+
+        $downloadUrl = $url;
+
+        if (! str_ends_with(strtolower(parse_url($url, PHP_URL_PATH) ?? ''), '.zip')) {
+            $payload = $this->fetch($url);
+            $downloadUrl = $payload['results'][0]['url']['url'] ?? null;
+        }
+
+        if (! is_string($downloadUrl) || $downloadUrl === '') {
+            throw new RuntimeException('Unable to resolve IDFM GTFS archive URL.');
+        }
+
+        $path = $this->temporaryPath('/exports/gtfs.zip');
+        $response = Http::timeout(config('fotometro.idfm.timeout', 30))
+            ->withUserAgent('fotometro/1.0 (+https://github.com/lewisbedar/fotometro)')
+            ->sink($path)
+            ->get($downloadUrl);
+
+        if (! $response->successful()) {
+            throw new RuntimeException("IDFM GTFS download failed with HTTP {$response->status()} for {$downloadUrl}.");
+        }
+
+        return [
+            'path' => $path,
+            '_temporary_files' => [$path],
+        ];
     }
 
     public function fetch(?string $url): array
@@ -229,7 +274,7 @@ class IdfmClient
                 if ($headers === null) {
                     $headers = array_map(fn (string $header) => ltrim($header, "\xEF\xBB\xBF"), $row);
 
-                    if (count(array_intersect($headers, ['route_id', 'id', 'access_id', 'stop_id', 'accid', 'zdaid'])) === 0) {
+                    if (count(array_intersect($headers, ['route_id', 'id', 'id_line', 'access_id', 'stop_id', 'accid', 'zdaid'])) === 0) {
                         throw new RuntimeException("IDFM CSV export {$path} is missing expected headers.");
                     }
 
@@ -313,7 +358,7 @@ class IdfmClient
             mkdir($directory, 0775, true);
         }
 
-        $extension = str_contains($url, '/exports/json') ? 'json' : 'csv';
+        $extension = str_contains($url, '.zip') ? 'zip' : (str_contains($url, '/exports/json') ? 'json' : 'csv');
 
         return $directory.'/'.uniqid('idfm-export-', true).'.'.$extension;
     }

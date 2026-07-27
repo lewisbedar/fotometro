@@ -21,8 +21,8 @@ class ImportNetworkCommand extends Command
     {
         $only = $this->option('only');
 
-        if ($only !== null && ! in_array($only, ['lines', 'stations', 'accesses'], true)) {
-            $this->error('Invalid --only value. Expected one of: lines, stations, accesses.');
+        if ($only !== null && ! in_array($only, ['lines', 'stations', 'accesses', 'gtfs', 'order', 'topology'], true)) {
+            $this->error('Invalid --only value. Expected one of: lines, stations, accesses, gtfs, order, topology.');
 
             return self::FAILURE;
         }
@@ -30,7 +30,7 @@ class ImportNetworkCommand extends Command
         $report = $importer->import(options: [
             'dry_run' => (bool) $this->option('dry-run'),
             'force' => (bool) $this->option('force'),
-            'only' => $only,
+            'only' => in_array($only, ['order', 'topology'], true) ? 'gtfs' : $only,
             'skip_traces' => (bool) $this->option('skip-traces'),
             'skip_accesses' => (bool) $this->option('skip-accesses'),
             'reset_idfm' => (bool) $this->option('reset-idfm'),
@@ -55,6 +55,11 @@ class ImportNetworkCommand extends Command
             ['Line lookup keys', $report->lineLookupKeys],
             ['Matched line records', $report->matchedLineRecords],
             ['Unmatched line records', $report->unmatchedLineRecords],
+            ['Line colors imported', $report->lineColorsImported],
+            ['Line text colors imported', $report->lineTextColorsImported],
+            ['Line colors kept', $report->lineColorsKept],
+            ['Line color fallbacks used', $report->lineColorFallbacksUsed],
+            ['Invalid line colors ignored', $report->lineInvalidColorsIgnored],
             ['Station-line relations created', $report->stationLineRelationsCreated],
             ['Station-line relations updated', $report->stationLineRelationsUpdated],
             ['Access records read', $report->accessRecordsRead],
@@ -63,6 +68,22 @@ class ImportNetworkCommand extends Command
             ['Unknown zdaid', $report->unknownZdaid],
             ['Unknown accid', $report->unknownAccid],
             ['Accesses linked to multiple stations', $report->accessesLinkedToMultipleStations],
+            ['GTFS routes read', $report->gtfsRoutesRead],
+            ['GTFS trips read', $report->gtfsTripsRead],
+            ['GTFS stop_times read', $report->gtfsStopTimesRead],
+            ['GTFS unique sequences', $report->gtfsUniqueSequences],
+            ['GTFS simple lines', $report->gtfsSimpleLines],
+            ['GTFS branched lines', $report->gtfsBranchedLines],
+            ['GTFS ordered stations', $report->gtfsOrderedStations],
+            ['GTFS relations updated', $report->gtfsRelationsUpdated],
+            ['GTFS unresolved stops', $report->gtfsUnresolvedStops],
+            ['GTFS topology sequences created', $report->gtfsTopologySequencesCreated],
+            ['GTFS trunks detected', $report->gtfsTrunksDetected],
+            ['GTFS branches detected', $report->gtfsBranchesDetected],
+            ['GTFS loops detected', $report->gtfsLoopsDetected],
+            ['GTFS orientations reversed', $report->gtfsOrientationsReversed],
+            ['GTFS manual orientations used', $report->gtfsManualOrientationsUsed],
+            ['GTFS unresolved orientation rules', $report->gtfsUnresolvedOrientationRules],
             ['Peak memory', $this->formatBytes(memory_get_peak_usage(true))],
         ]);
 
@@ -71,6 +92,11 @@ class ImportNetworkCommand extends Command
             $this->line('Source line IDs sample: '.json_encode(array_slice($report->sourceLineIds, 0, 5), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
             $this->line('Database line external_id sample: '.json_encode(array_slice($report->databaseLineIds, 0, 5), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
             $this->line('Unmatched line IDs sample: '.json_encode(array_slice($report->unmatchedLineIds, 0, 5), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+            $this->line('GTFS lines without sequence: '.json_encode($report->gtfsLinesWithoutSequence, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+            $this->line('GTFS reversed lines: '.json_encode(array_values(array_unique($report->gtfsReversedLines)), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+            foreach ($report->gtfsLineSummaries as $summary) {
+                $this->line('GTFS line summary: '.json_encode($summary, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+            }
         }
 
         if ($report->ignoredReasons !== []) {

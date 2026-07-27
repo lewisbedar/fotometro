@@ -673,6 +673,12 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
         getStationsForLine(lineId) {
             const line = this.mapData.lines.find((candidate) => Number(candidate.id) === Number(lineId));
 
+            const topologyStations = this.uniqueTopologyStations(line);
+
+            if (topologyStations.length) {
+                return topologyStations;
+            }
+
             if (line?.stations?.length) {
                 return this.orderedLineStations(line);
             }
@@ -804,8 +810,22 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
                 }
 
                 const selector = `[data-station-id="${safeId}"]`;
-                this.$refs.lineDiagramScroller?.querySelector(selector)?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-                this.$refs.lineDiagramMobileScroller?.querySelector(selector)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                this.$refs.lineDiagramScroller?.querySelectorAll('.is-active-occurrence').forEach((element) => element.classList.remove('is-active-occurrence'));
+                this.$refs.lineDiagramMobileScroller?.querySelectorAll('.is-active-occurrence').forEach((element) => element.classList.remove('is-active-occurrence'));
+                this.$refs.lineDiagramScroller?.querySelectorAll(selector).forEach((element, index) => {
+                    element.classList.toggle('is-active-occurrence', true);
+
+                    if (index === 0) {
+                        element.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+                    }
+                });
+                this.$refs.lineDiagramMobileScroller?.querySelectorAll(selector).forEach((element, index) => {
+                    element.classList.toggle('is-active-occurrence', true);
+
+                    if (index === 0) {
+                        element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    }
+                });
             });
         },
 
@@ -813,8 +833,59 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
             return [...(line?.stations || [])].sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
         },
 
+        topologyBranches(line) {
+            const branches = line?.topology?.branches;
+
+            if (Array.isArray(branches) && branches.length > 0) {
+                return branches.map((branch) => ({
+                    ...branch,
+                    stations: [...(branch.stations || [])].sort((a, b) => Number(a.position || 0) - Number(b.position || 0)),
+                }));
+            }
+
+            return [{
+                key: 'main',
+                label: 'Sequence principale',
+                stations: this.orderedLineStations(line),
+            }];
+        },
+
+        uniqueTopologyStations(line) {
+            const stations = [];
+            const seen = new Set();
+
+            this.topologyBranches(line).forEach((branch) => {
+                branch.stations.forEach((station) => {
+                    if (! seen.has(Number(station.id))) {
+                        seen.add(Number(station.id));
+                        stations.push(station);
+                    }
+                });
+            });
+
+            return stations;
+        },
+
+        topologyTypeLabel(line) {
+            const labels = {
+                simple: 'Ligne simple',
+                branched: 'Ligne a branches',
+                loop: 'Boucle',
+                'partial-loop': 'Boucle partielle',
+                'loop-with-mainline': 'Boucle avec axe principal',
+            };
+
+            return labels[line?.topology?.type] || 'Topologie';
+        },
+
         lineTerminusLabel(line) {
-            const termini = this.orderedLineStations(line).filter((station) => station.is_terminus);
+            const orientation = line?.topology?.orientation;
+
+            if (orientation?.start && Array.isArray(orientation.ends) && orientation.ends.length > 0) {
+                return `${orientation.start.name} - ${orientation.ends.map((station) => station.name).join(' / ')}`;
+            }
+
+            const termini = this.uniqueTopologyStations(line).filter((station) => station.is_terminus);
 
             if (termini.length >= 2) {
                 return `${termini[0].name} - ${termini[termini.length - 1].name}`;
@@ -824,7 +895,7 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
                 return `Terminus: ${termini[0].name}`;
             }
 
-            const stations = this.orderedLineStations(line);
+            const stations = this.uniqueTopologyStations(line);
 
             if (stations.length >= 2) {
                 return `${stations[0].name} - ${stations[stations.length - 1].name}`;
@@ -839,6 +910,10 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
                 'is-selected': Number(this.selectedStationId) === Number(station.id),
                 'is-terminus': Boolean(station.is_terminus),
             };
+        },
+
+        coverageSvgNodeClass(station) {
+            return `status-${station.coverage_status?.value || 'not_started'}`;
         },
 
         safeLineColor(value) {

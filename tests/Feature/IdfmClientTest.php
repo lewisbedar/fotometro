@@ -74,6 +74,23 @@ class IdfmClientTest extends TestCase
         Http::assertNotSent(fn ($request) => str_contains($request->url(), 'offset=10000'));
     }
 
+    public function test_only_lines_uses_referentiel_des_lignes_export(): void
+    {
+        Http::fake([
+            'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/referentiel-des-lignes/exports/csv?limit=-1' => Http::response($this->csv([
+                ['id_line', 'shortname_line', 'name_line', 'transportmode', 'colourweb_hexa', 'textcolourweb_hexa'],
+                ['IDFM:C01371', '1', 'Ligne 1', 'metro', 'FFCD00', '111111'],
+            ]), 200),
+        ]);
+
+        $datasets = app(IdfmClient::class)->fetchConfiguredDatasets(['only' => 'lines']);
+
+        $this->assertArrayHasKey('lines', $datasets);
+        $this->assertArrayNotHasKey('arrets_lignes', $datasets);
+        $this->assertSame('FFCD00', $datasets['lines']['results']->first()['colourweb_hexa']);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'referentiel-des-lignes/exports/csv?limit=-1'));
+    }
+
     public function test_local_json_and_csv_exports_are_processed(): void
     {
         $jsonPath = storage_path('app/testing-idfm-export.json');
@@ -161,6 +178,7 @@ class IdfmClientTest extends TestCase
         file_put_contents($valid, "zdaid;zdcid;zdaname\n1;1;One\n");
 
         config([
+            'fotometro.idfm.lines_url' => "file://{$path}",
             'fotometro.idfm.arrets_lignes_url' => "file://{$path}",
             'fotometro.idfm.stop_areas_url' => "file://{$valid}",
             'fotometro.idfm.stop_relations_url' => "file://{$valid}",
@@ -168,6 +186,7 @@ class IdfmClientTest extends TestCase
 
         $report = app(NetworkImporter::class)->import(options: [
             'force' => true,
+            'only' => 'lines',
             'skip_traces' => true,
             'skip_accesses' => true,
         ]);

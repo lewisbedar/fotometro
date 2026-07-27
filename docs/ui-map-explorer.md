@@ -40,3 +40,10 @@ L'explorateur consomme `/api/map`. Les lignes exposent leurs stations ordonnees 
 Le logo horizontal attendu est `public/images/logo_fotometro.png`. Si le fichier est absent, la barre superieure affiche le texte `fotometro` sans image cassee.
 
 Les noms du schema de ligne sont places sous l'axe et sous les noeuds; les correspondances restent sous le nom de station. Les futures branches IDFM sont conservees dans les donnees via `branch`, mais la representation complexe des embranchements reste une evolution separee.
+# Schema et GTFS
+
+Le schema desktop lit `lines[].topology.layout` fourni par `/api/map`. Cette structure est mise a jour par l'import GTFS et non deduite du CSV `arrets-lignes`.
+
+Le backend calcule les coordonnees SVG: dimensions, viewBox, segments, noeuds, labels, cartouches de terminus, correspondances et branches. Alpine rend ces coordonnees sans improviser la geometrie. Les lignes branchees disposent de `topology.branches`; les boucles utilisent les types `loop` ou `partial-loop`. Une station commune a plusieurs sequences reste une seule station publique, mais toutes ses occurrences visuelles peuvent etre surlignees.
+
+Sur mobile, une liste verticale separee reste utilisee pour ne pas reduire le SVG desktop complexe. Les choix metier detailles sont documentes dans `docs/line-topology.md`.

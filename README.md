@@ -100,6 +100,8 @@ Les tests utilisent SQLite en mémoire et désactivent Vite côté requêtes HTT
 ## Interface cartographique plein ecran
 
 L'accueil utilise une carte MapLibre plein ecran avec panneaux flottants: barre superieure, recherche, progression, filtres, selection de lignes, panneaux contextuels et schema dynamique de ligne. Voir [Interface cartographique plein ecran](docs/ui-map-explorer.md).
+
+Les schemas de ligne utilisent maintenant une topologie dediee issue du GTFS. L'import `php artisan fotometro:import-network --only=gtfs` ou `--only=topology` remplit `line_station_sequences`, applique les orientations canoniques et expose `lines[].topology` dans `/api/map`. Voir [Topologie des lignes](docs/line-topology.md).
 # Import du reseau IDFM
 
 Le reseau metro peut etre synchronise depuis les jeux de donnees publics d'Ile-de-France Mobilites avec:
@@ -109,7 +111,7 @@ php artisan fotometro:import-network --dry-run
 php artisan fotometro:import-network
 ```
 
-L'import cree ou met a jour lignes, stations, correspondances, ordre de ligne, terminus, branches, traces GeoJSON valides et acces de station si les URLs sont configurees. Il ne supprime jamais automatiquement: les donnees absentes sont desactivees. Les champs editoriaux de fotometro, dont les statuts de couverture photographique, ne sont pas ecrases.
+L'import cree ou met a jour lignes, stations, correspondances, ordre GTFS, terminus, sequences topologiques, branches, traces GeoJSON valides et acces de station si les URLs sont configurees. Il ne supprime jamais automatiquement: les donnees absentes sont desactivees. Les champs editoriaux de fotometro, dont les statuts de couverture photographique, ne sont pas ecrases.
 
 Voir `docs/idfm-import.md` pour les sources, variables d'environnement et procedures o2switch.
 

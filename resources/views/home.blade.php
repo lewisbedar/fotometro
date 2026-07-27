@@ -42,7 +42,7 @@
         @include('partials.map.lines-panel')
         @include('partials.map.station-panel')
         @include('partials.map.line-panel')
-        @include('partials.map.line-diagram')
+        @include('partials.map.line-diagram-svg')
 
         <div class="absolute inset-x-4 bottom-4 z-50 rounded-lg border border-red-200 bg-white p-4 text-sm text-red-800 shadow-sm md:inset-x-auto md:right-4 md:max-w-md" x-show="mapFatalError && isLocal" x-cloak>
             <p class="font-semibold">Erreur MapLibre</p>

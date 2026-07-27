@@ -11,6 +11,27 @@ class LineImporter
 {
     use NormalizesIdfmRecords;
 
+    public function __construct(private readonly LineColorPalette $colors) {}
+
+    private const PARIS_METRO_CODES = [
+        '1',
+        '2',
+        '3',
+        '3B',
+        '4',
+        '5',
+        '6',
+        '7',
+        '7B',
+        '8',
+        '9',
+        '10',
+        '11',
+        '12',
+        '13',
+        '14',
+    ];
+
     public function import(array $payload, array $options = []): ImportReport
     {
         $report = new ImportReport;
@@ -37,8 +58,8 @@ class LineImporter
                 }
 
                 $record = $records->first();
-                $code = trim((string) ($this->value($record, ['shortname', 'route_short_name', 'code', 'line_code']) ?? $externalId));
-                $name = trim((string) ($this->value($record, ['route_long_name', 'name', 'line_name']) ?? "Ligne {$code}"));
+                $code = trim((string) ($this->value($record, ['shortname_line', 'shortname', 'route_short_name', 'code', 'line_code']) ?? $externalId));
+                $name = trim((string) ($this->value($record, ['name_line', 'route_long_name', 'name', 'line_name']) ?? "Ligne {$code}"));
                 $seenExternalIds[] = $externalId;
 
                 $line = Line::query()
@@ -46,13 +67,28 @@ class LineImporter
                     ->orWhere('code', $code)
                     ->first();
 
+                $color = $this->resolveColor(
+                    $this->value($record, ['colourweb_hexa', 'route_color', 'color']),
+                    $line?->color,
+                    $code,
+                    'color',
+                    $report,
+                );
+                $textColor = $this->resolveColor(
+                    $this->value($record, ['textcolourweb_hexa', 'route_text_color', 'text_color']),
+                    $line?->text_color,
+                    $code,
+                    'text_color',
+                    $report,
+                );
+
                 $attributes = [
                     'external_id' => $externalId,
                     'code' => $code,
                     'name' => $name,
                     'slug' => $line?->slug ?? $this->uniqueSlug('lines', Str::slug($name ?: "ligne-{$code}")),
-                    'color' => $this->color($this->value($record, ['route_color', 'color']), '#1d4ed8'),
-                    'text_color' => $this->color($this->value($record, ['route_text_color', 'text_color']), '#ffffff'),
+                    'color' => $color,
+                    'text_color' => $textColor,
                     'sort_order' => $this->sortOrder($code),
                     'is_active' => true,
                     'source' => 'idfm',
@@ -84,9 +120,16 @@ class LineImporter
 
     private function isMetro(array $record): bool
     {
-        $mode = Str::lower(Str::ascii((string) ($this->value($record, ['mode', 'route_type', 'transportmode']) ?? 'metro')));
+        $mode = Str::lower(Str::ascii((string) ($this->value($record, ['mode', 'route_type', 'transportmode', 'transport_mode']) ?? 'metro')));
+        $code = $this->normalizeCode((string) ($this->value($record, ['shortname_line', 'shortname', 'route_short_name', 'code', 'line_code']) ?? ''));
 
-        return str_contains($mode, 'metro') || $mode === '1';
+        return (str_contains($mode, 'metro') || $mode === '1')
+            && in_array($code, self::PARIS_METRO_CODES, true);
+    }
+
+    private function normalizeCode(string $code): string
+    {
+        return strtoupper(str_replace(' ', '', trim($code)));
     }
 
     private function sortOrder(string $code): int
@@ -96,11 +139,36 @@ class LineImporter
         return isset($matches[0]) ? (int) $matches[0] : 999;
     }
 
-    private function color(mixed $color, string $fallback): string
+    private function resolveColor(mixed $candidate, ?string $existing, string $code, string $kind, ImportReport $report): string
     {
-        $candidate = strtoupper(ltrim((string) $color, '#'));
+        $normalized = $this->colors->normalize(is_scalar($candidate) ? (string) $candidate : null);
 
-        return preg_match('/^[0-9A-F]{6}$/', $candidate) ? "#{$candidate}" : $fallback;
+        if ($normalized !== null) {
+            if ($kind === 'color') {
+                $report->lineColorsImported++;
+            } else {
+                $report->lineTextColorsImported++;
+            }
+
+            return $normalized;
+        }
+
+        if ($candidate !== null && $candidate !== '') {
+            $report->lineInvalidColorsIgnored++;
+        }
+
+        $existing = $this->colors->normalize($existing);
+
+        if ($existing !== null) {
+            $report->lineColorsKept++;
+
+            return $existing;
+        }
+
+        $fallback = $this->colors->fallbackFor($code)[$kind];
+        $report->lineColorFallbacksUsed++;
+
+        return $fallback;
     }
 
     private function uniqueSlug(string $table, string $base): string

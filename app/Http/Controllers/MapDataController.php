@@ -23,6 +23,11 @@ class MapDataController extends Controller
                     ->whereNotNull('longitude')
                     ->with(['lines' => fn ($lineQuery) => $lineQuery->where('is_active', true)->orderBy('sort_order')])
                     ->withCount('accesses')])
+                ->with(['stationSequences' => fn ($query) => $query
+                    ->with(['station' => fn ($stationQuery) => $stationQuery
+                        ->where('is_active', true)
+                        ->with(['lines' => fn ($lineQuery) => $lineQuery->where('is_active', true)->orderBy('sort_order')])
+                        ->withCount('accesses')])])
                 ->withCount('stations')
                 ->orderBy('sort_order')
                 ->get();

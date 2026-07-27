@@ -4,6 +4,7 @@ namespace App\Services\Idfm;
 
 use App\Models\Station;
 use App\Models\Line;
+use App\Models\LineStationSequence;
 use App\Models\StationAccess;
 use App\Models\StationArea;
 use App\Models\StationStop;
@@ -18,6 +19,7 @@ class NetworkImporter
         private readonly StationImporter $stationImporter,
         private readonly TraceImporter $traceImporter,
         private readonly AccessImporter $accessImporter,
+        private readonly GtfsImporter $gtfsImporter,
     ) {}
 
     public function import(array $datasets = [], array $options = []): ImportReport
@@ -99,6 +101,10 @@ class NetworkImporter
                 }
             }
 
+            if ($options['only'] === null || $options['only'] === 'gtfs') {
+                $report->merge($this->gtfsImporter->import($datasets['gtfs_archive'] ?? [], $options));
+            }
+
             if ($options['dry_run']) {
                 DB::rollBack();
                 $report->warn('Dry-run mode: no database changes were committed.');
@@ -151,6 +157,7 @@ class NetworkImporter
     private function resetIdfmData(): void
     {
         DB::table('access_station')->delete();
+        LineStationSequence::query()->delete();
         DB::table('station_line')->delete();
         StationStop::query()->delete();
         StationArea::query()->delete();

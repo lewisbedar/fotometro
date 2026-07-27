@@ -77,3 +77,21 @@ Quand `path_geojson` est `null`, le frontend cadre la ligne a partir des coordon
 # Donnees IDFM
 
 `/api/map` expose maintenant les identifiants `external_id` des lignes et stations, le nombre d'acces connus, et les stations de chaque ligne ordonnees par `station_line.position` avec `branch`, `is_terminus`, statut de couverture et correspondances. `source_payload` reste strictement interne.
+# Ordre GTFS dans /api/map
+
+Apres `php artisan fotometro:import-network --only=gtfs`, les champs `position`, `branch` et `is_terminus` proviennent du GTFS officiel IDFM. Chaque ligne expose aussi `branches`, un regroupement des stations par cle de branche, tout en conservant `stations` pour le schema existant.
+
+# Topologie de ligne dans /api/map
+
+Chaque ligne expose aussi `topology`, prepare cote Laravel depuis `line_station_sequences`.
+
+- `type`: `simple`, `branched`, `loop` ou `partial-loop`
+- `orientation.start`: station de depart canonique
+- `orientation.ends`: terminus opposes au depart
+- `trunk`: stations partagees par toutes les sequences
+- `branches`: sequences affichees par le schema
+- `main` et `loop`: raccourcis pour les rendus specifiques
+
+Le frontend consomme cette structure et ne reconstruit pas les patterns GTFS. Voir `docs/line-topology.md`.
+
+`topology.layout` fournit le placement SVG deterministe du schema desktop. Les coordonnees sont calculees cote Laravel par `LineDiagramLayout`; le frontend ne determine pas les positions des stations.
