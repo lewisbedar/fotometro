@@ -9,7 +9,10 @@ class LineDiagramLayout
 {
     private const MARGIN_X = 96;
     private const SIMPLE_AXIS_Y = 112;
-    private const LABEL_GAP = 46;
+    private const LABEL_GAP = 28;
+    private const CONNECTIONS_GAP = 30;
+    private const LABEL_ROTATION_DEGREES = -45;
+    private const WRAP_THRESHOLD = 13;
 
     public function build(Line $line, array $topology): array
     {
@@ -32,13 +35,12 @@ class LineDiagramLayout
     {
         $stations = collect($topology['main'] ?: ($topology['branches'][0]['stations'] ?? []))->values();
         $count = max(1, $stations->count());
-        $spacing = $this->spacing($count);
-        $width = $this->width($count, $spacing);
+        $positions = $this->horizontalPositions($stations, self::MARGIN_X);
         $axisY = self::SIMPLE_AXIS_Y;
 
         return [
             'type' => 'simple',
-            'width' => $width,
+            'width' => max(1200, ($positions->last() ?? self::MARGIN_X) + self::MARGIN_X),
             'height' => 320,
             'axis_y' => $axisY,
             'segments' => [[
@@ -46,13 +48,13 @@ class LineDiagramLayout
                 'kind' => 'main',
                 'x1' => self::MARGIN_X,
                 'y1' => $axisY,
-                'x2' => self::MARGIN_X + (($count - 1) * $spacing),
+                'x2' => $positions->last() ?? self::MARGIN_X,
                 'y2' => $axisY,
             ]],
             'stations' => $stations
                 ->map(fn (array $station, int $index) => $this->stationNode(
                     $station,
-                    self::MARGIN_X + ($index * $spacing),
+                    $positions[$index],
                     $axisY,
                     branch: null,
                     isFirst: $index === 0,
@@ -63,6 +65,35 @@ class LineDiagramLayout
             'branches' => [],
             'terminus' => $this->terminusNames($stations),
         ];
+    }
+
+    /**
+     * Diagonal labels only need their *projected* horizontal footprint
+     * (width x cos(angle)), not their full width, to avoid colliding with
+     * neighbouring stations - and wrapping long names onto two lines (see
+     * wrapLabelLines()) keeps that footprint small even for long names.
+     */
+    private function horizontalPositions(Collection $stations, float $startX, float $minGap = 70, float $labelMargin = 16): Collection
+    {
+        $projection = abs(cos(deg2rad(self::LABEL_ROTATION_DEGREES)));
+        $positions = collect();
+        $previousHalfFootprint = 0.0;
+        $x = $startX;
+
+        foreach ($stations->values() as $index => $station) {
+            $halfFootprint = ($this->labelWidth($station['name']) * $projection) / 2;
+
+            if ($index === 0) {
+                $x = $startX;
+            } else {
+                $x += max($minGap, $previousHalfFootprint + $halfFootprint + $labelMargin);
+            }
+
+            $positions->push(round($x, 2));
+            $previousHalfFootprint = $halfFootprint;
+        }
+
+        return $positions;
     }
 
     private function layoutBranchedLine(Line $line, array $topology): array
@@ -108,7 +139,7 @@ class LineDiagramLayout
                     $point['x'],
                     $point['y'],
                     branch: $point['branch'] ?? ($config['type'] ?? 'manual'),
-                    rotation: $point['rotation'] ?? -45,
+                    rotation: $point['rotation'] ?? self::LABEL_ROTATION_DEGREES,
                     anchor: $point['label_anchor'] ?? null,
                     labelDx: $point['label_dx'] ?? 0,
                     labelDy: $point['label_dy'] ?? 0,
@@ -170,12 +201,10 @@ class LineDiagramLayout
             ...$branch,
             'stations' => collect($branch['stations'])->reject(fn (array $station) => $trunk->contains('id', $station['id']))->values(),
         ]);
-        $trunkCount = max(2, $trunk->count());
-        $spacing = $this->spacing($trunkCount);
-        $forkX = self::MARGIN_X + (($trunkCount - 1) * $spacing);
+        $trunkPositions = $this->horizontalPositions($trunk, self::MARGIN_X);
+        $forkX = $trunkPositions->last() ?? self::MARGIN_X;
         $trunkY = 200;
         $branchYs = [118, 292];
-        $width = max(1300, $forkX + 520);
         $nodes = collect();
         $segments = [[
             'id' => 'trunk',
@@ -187,24 +216,29 @@ class LineDiagramLayout
         ]];
 
         foreach ($trunk as $index => $station) {
-            $nodes->push($this->stationNode($station, self::MARGIN_X + ($index * $spacing), $trunkY, branch: 'trunk', isFirst: $index === 0));
+            $nodes->push($this->stationNode($station, $trunkPositions[$index], $trunkY, branch: 'trunk', isFirst: $index === 0));
         }
+
+        $maxBranchX = $forkX;
 
         foreach ($branchOnly as $branchIndex => $branch) {
             $y = $branchYs[$branchIndex] ?? ($trunkY + (($branchIndex + 1) * 86));
             $startX = $forkX + 86;
             $branchStations = $branch['stations'];
+            $positions = $this->horizontalPositions($branchStations, $startX);
+            $lastX = $positions->last() ?? $startX;
+            $maxBranchX = max($maxBranchX, $lastX);
             $segments[] = ['id' => $branch['key'].'-diagonal', 'kind' => 'branch', 'branch' => $branch['key'], 'x1' => $forkX, 'y1' => $trunkY, 'x2' => $startX, 'y2' => $y];
-            $segments[] = ['id' => $branch['key'].'-horizontal', 'kind' => 'branch', 'branch' => $branch['key'], 'x1' => $startX, 'y1' => $y, 'x2' => $startX + (max(0, $branchStations->count() - 1) * 150), 'y2' => $y];
+            $segments[] = ['id' => $branch['key'].'-horizontal', 'kind' => 'branch', 'branch' => $branch['key'], 'x1' => $startX, 'y1' => $y, 'x2' => $lastX, 'y2' => $y];
 
             foreach ($branchStations as $index => $station) {
-                $nodes->push($this->stationNode($station, $startX + ($index * 150), $y, branch: $branch['key'], isLast: $index === $branchStations->count() - 1));
+                $nodes->push($this->stationNode($station, $positions[$index], $y, branch: $branch['key'], isLast: $index === $branchStations->count() - 1));
             }
         }
 
         return [
             'type' => $type,
-            'width' => $width,
+            'width' => max(1300, $maxBranchX + self::MARGIN_X),
             'height' => 500,
             'axis_y' => $trunkY,
             'segments' => $segments,
@@ -219,35 +253,45 @@ class LineDiagramLayout
         $branches = collect($topology['branches'] ?? [])->values();
         $shared = collect($topology['trunk'] ?? [])->values();
         $branchYs = [112, 254];
-        $convergeX = 620;
         $trunkY = 200;
-        $trunkSpacing = $this->spacing(max(2, $shared->count()));
-        $width = max(1400, $convergeX + (($shared->count() + 3) * $trunkSpacing));
         $nodes = collect();
+
+        $branchLayouts = $branches->values()->map(function (array $branch, int $branchIndex) use ($shared, $branchYs, $trunkY) {
+            $branchStations = collect($branch['stations'])->reject(fn (array $station) => $shared->contains('id', $station['id']))->values();
+
+            return [
+                'key' => $branch['key'],
+                'label' => $branch['label'] ?? $branch['key'],
+                'y' => $branchYs[$branchIndex] ?? ($trunkY + (($branchIndex + 1) * 86)),
+                'stations' => $branchStations,
+                'positions' => $this->horizontalPositions($branchStations, self::MARGIN_X),
+            ];
+        });
+
+        $convergeX = max(620, ($branchLayouts->map(fn (array $branch) => ($branch['positions']->last() ?? self::MARGIN_X) + 140)->max() ?: 620));
+        $trunkPositions = $this->horizontalPositions($shared, $convergeX);
+        $width = max(1400, ($trunkPositions->last() ?? $convergeX) + self::MARGIN_X);
         $segments = [[
             'id' => 'trunk',
             'kind' => 'main',
             'x1' => $convergeX,
             'y1' => $trunkY,
-            'x2' => $convergeX + (max(1, $shared->count() - 1) * $trunkSpacing),
+            'x2' => $trunkPositions->last() ?? $convergeX,
             'y2' => $trunkY,
         ]];
 
-        foreach ($branches as $branchIndex => $branch) {
-            $branchStations = collect($branch['stations'])->reject(fn (array $station) => $shared->contains('id', $station['id']))->values();
-            $y = $branchYs[$branchIndex] ?? ($trunkY + (($branchIndex + 1) * 86));
-            $startX = self::MARGIN_X;
-            $lastBranchX = $startX + (max(0, $branchStations->count() - 1) * 150);
-            $segments[] = ['id' => $branch['key'].'-horizontal', 'kind' => 'branch', 'branch' => $branch['key'], 'x1' => $startX, 'y1' => $y, 'x2' => $lastBranchX, 'y2' => $y];
-            $segments[] = ['id' => $branch['key'].'-diagonal', 'kind' => 'branch', 'branch' => $branch['key'], 'x1' => $lastBranchX, 'y1' => $y, 'x2' => $convergeX, 'y2' => $trunkY];
+        foreach ($branchLayouts as $branch) {
+            $lastBranchX = $branch['positions']->last() ?? self::MARGIN_X;
+            $segments[] = ['id' => $branch['key'].'-horizontal', 'kind' => 'branch', 'branch' => $branch['key'], 'x1' => self::MARGIN_X, 'y1' => $branch['y'], 'x2' => $lastBranchX, 'y2' => $branch['y']];
+            $segments[] = ['id' => $branch['key'].'-diagonal', 'kind' => 'branch', 'branch' => $branch['key'], 'x1' => $lastBranchX, 'y1' => $branch['y'], 'x2' => $convergeX, 'y2' => $trunkY];
 
-            foreach ($branchStations as $index => $station) {
-                $nodes->push($this->stationNode($station, $startX + ($index * 150), $y, branch: $branch['key'], isFirst: $index === 0, rotation: 0));
+            foreach ($branch['stations'] as $index => $station) {
+                $nodes->push($this->stationNode($station, $branch['positions'][$index], $branch['y'], branch: $branch['key'], isFirst: $index === 0));
             }
         }
 
         foreach ($shared as $index => $station) {
-            $nodes->push($this->stationNode($station, $convergeX + ($index * $trunkSpacing), $trunkY, branch: 'trunk', isLast: $index === $shared->count() - 1));
+            $nodes->push($this->stationNode($station, $trunkPositions[$index], $trunkY, branch: 'trunk', isLast: $index === $shared->count() - 1));
         }
 
         return [
@@ -277,25 +321,38 @@ class LineDiagramLayout
     ): array
     {
         $isTerminus = $isTerminusOverride ?? ((bool) ($station['is_terminus'] ?? false) || $isFirst || $isLast);
-        $labelRotation = $rotation ?? -45;
-        $anchor = $anchor ?? 'end';
+        // RATP schematics write the station name diagonally above the point,
+        // starting near it and reading up and to the right (text-anchor
+        // "start"), wrapping long names onto a second line rather than
+        // running one very long diagonal string.
+        $labelRotation = $rotation ?? self::LABEL_ROTATION_DEGREES;
+        $anchor = $anchor ?? 'start';
+        $labelLines = $this->wrapLabelLines($station['name']);
         $labelWidth = $this->labelWidth($station['name']);
         $labelX = $x + $labelDx;
-        $labelY = $y + self::LABEL_GAP + $labelDy;
-        $terminusBox = $isTerminus ? [
-            'x' => round($labelX - $labelWidth + 8, 2),
+        $labelY = $y - self::LABEL_GAP + $labelDy;
+        $boxLeft = match ($anchor) {
+            'end' => $labelX - $labelWidth,
+            'middle' => $labelX - ($labelWidth / 2),
+            default => $labelX,
+        };
+        // Local (pre-rotation) box wrapping the label text; used to render
+        // the terminus cartouche and, rotated, to size the diagram canvas
+        // tightly around every label regardless of how long a name is.
+        $labelBox = [
+            'x' => round($boxLeft - 4, 2),
             'y' => round($labelY - 5, 2),
-            'width' => $labelWidth,
-            'height' => 24,
+            'width' => round($labelWidth + 8, 2),
+            'height' => count($labelLines) > 1 ? 40 : 24,
             'rx' => 4,
-        ] : null;
+        ];
 
         $connections = collect($station['connections'] ?? [])
             ->values()
             ->map(fn (array $connection, int $index) => [
                 ...$connection,
                 'x' => round($x + (($index - max(0, count($station['connections'] ?? []) - 1) / 2) * 22), 2),
-                'y' => round($y + self::LABEL_GAP + 78, 2),
+                'y' => round($y + self::CONNECTIONS_GAP, 2),
             ])
             ->all();
 
@@ -305,12 +362,14 @@ class LineDiagramLayout
             'y' => round($y, 2),
             'label_x' => round($labelX, 2),
             'label_y' => round($labelY, 2),
-            'connections_y' => round($y + self::LABEL_GAP + 54, 2),
+            'connections_y' => round($y + self::CONNECTIONS_GAP, 2),
             'connection_badges' => $connections,
             'label_anchor' => $anchor,
             'label_rotation' => $labelRotation,
             'label_width' => $labelWidth,
-            'terminus_label_box' => $terminusBox,
+            'label_lines' => $labelLines,
+            'label_box' => $labelBox,
+            'terminus_label_box' => $isTerminus ? $labelBox : null,
             'is_terminus' => $isTerminus,
             'branch' => $branch,
             'occurrence_key' => ($branch ?? 'main').'-'.$station['id'].'-'.$station['position'],
@@ -351,7 +410,10 @@ class LineDiagramLayout
     private function finalizeLayout(array $layout): array
     {
         $bounds = $this->layoutBounds($layout);
-        $padding = 80;
+        // Bounds are now computed from each label's real rotated extent
+        // (see rotatedBoundingBox()), not a worst-case guess, so this only
+        // needs to be a small cosmetic margin rather than a safety net.
+        $padding = 20;
         $minX = floor($bounds['min_x'] - $padding);
         $minY = floor($bounds['min_y'] - $padding);
         $maxX = ceil($bounds['max_x'] + $padding);
@@ -420,8 +482,12 @@ class LineDiagramLayout
 
     private function layoutBounds(array $layout): array
     {
-        $xs = [0];
-        $ys = [0];
+        // No hardcoded 0 seed here: forcing the bounding box to always
+        // include the coordinate origin manufactures empty margins whenever
+        // a layout's real content doesn't happen to span near y=0 (e.g. line
+        // 13's topmost branch sits at y=112), unrelated to actual content.
+        $xs = [];
+        $ys = [];
 
         foreach ($layout['segments'] as $segment) {
             array_push($xs, $segment['x1'], $segment['x2']);
@@ -432,25 +498,23 @@ class LineDiagramLayout
             array_push($xs, $station['x'] - 16, $station['x'] + 16);
             array_push($ys, $station['y'] - 16, $station['y'] + 16);
 
-            $labelLeft = $station['label_anchor'] === 'end'
-                ? $station['label_x'] - $station['label_width']
-                : $station['label_x'] - ($station['label_width'] / 2);
-            $labelRight = $station['label_anchor'] === 'end'
-                ? $station['label_x'] + 8
-                : $station['label_x'] + ($station['label_width'] / 2);
-            array_push($xs, $labelLeft, $labelRight);
-            array_push($ys, $station['label_y'] - 8, $station['label_y'] + 120);
-
-            if ($station['terminus_label_box'] !== null) {
-                $box = $station['terminus_label_box'];
-                array_push($xs, $box['x'], $box['x'] + $box['width']);
-                array_push($ys, $box['y'], $box['y'] + $box['height']);
-            }
+            $rotatedLabel = $this->rotatedBoundingBox(
+                $station['label_x'],
+                $station['label_y'],
+                $station['label_box'],
+                (int) $station['label_rotation'],
+            );
+            array_push($xs, $rotatedLabel['min_x'], $rotatedLabel['max_x']);
+            array_push($ys, $rotatedLabel['min_y'], $rotatedLabel['max_y']);
 
             foreach ($station['connection_badges'] as $connection) {
                 array_push($xs, $connection['x'] - 12, $connection['x'] + 12);
                 array_push($ys, $connection['y'] - 12, $connection['y'] + 12);
             }
+        }
+
+        if ($xs === [] || $ys === []) {
+            return ['min_x' => 0, 'min_y' => 0, 'max_x' => 1, 'max_y' => 1];
         }
 
         return [
@@ -461,23 +525,82 @@ class LineDiagramLayout
         ];
     }
 
+    /**
+     * Rotates a label's local (pre-rotation) bounding box around its anchor
+     * point and returns the resulting axis-aligned extent, mirroring the
+     * `rotate(angle, anchorX, anchorY)` SVG transform applied at render time.
+     * This is what lets the canvas be sized tightly around every label
+     * instead of relying on a flat, worst-case guess.
+     *
+     * @param  array{x: float, y: float, width: float, height: float}  $box
+     */
+    private function rotatedBoundingBox(float $anchorX, float $anchorY, array $box, int $rotationDegrees): array
+    {
+        $theta = deg2rad($rotationDegrees);
+        $cos = cos($theta);
+        $sin = sin($theta);
+
+        $corners = [
+            [$box['x'], $box['y']],
+            [$box['x'] + $box['width'], $box['y']],
+            [$box['x'], $box['y'] + $box['height']],
+            [$box['x'] + $box['width'], $box['y'] + $box['height']],
+        ];
+
+        $xs = [];
+        $ys = [];
+
+        foreach ($corners as [$pointX, $pointY]) {
+            $dx = $pointX - $anchorX;
+            $dy = $pointY - $anchorY;
+            $xs[] = $anchorX + ($dx * $cos) - ($dy * $sin);
+            $ys[] = $anchorY + ($dx * $sin) + ($dy * $cos);
+        }
+
+        return ['min_x' => min($xs), 'max_x' => max($xs), 'min_y' => min($ys), 'max_y' => max($ys)];
+    }
+
+    /**
+     * Splits a long station name onto two lines at the most balanced word
+     * boundary, the way RATP's own line diagrams do (e.g. "Malakoff" /
+     * "Plateau de Vanves") instead of running one very long diagonal string.
+     */
+    private function wrapLabelLines(string $name): array
+    {
+        $name = trim($name);
+        $words = preg_split('/\s+/u', $name) ?: [$name];
+
+        if (mb_strlen($name) <= self::WRAP_THRESHOLD || count($words) < 2) {
+            return [$name];
+        }
+
+        $bestIndex = 1;
+        $bestDiff = PHP_INT_MAX;
+
+        for ($i = 1; $i < count($words); $i++) {
+            $line1 = implode(' ', array_slice($words, 0, $i));
+            $line2 = implode(' ', array_slice($words, $i));
+            $diff = abs(mb_strlen($line1) - mb_strlen($line2));
+
+            if ($diff < $bestDiff) {
+                $bestDiff = $diff;
+                $bestIndex = $i;
+            }
+        }
+
+        return [
+            implode(' ', array_slice($words, 0, $bestIndex)),
+            implode(' ', array_slice($words, $bestIndex)),
+        ];
+    }
+
     private function labelWidth(string $name): int
     {
-        return max(76, min(230, (int) ceil(mb_strlen($name) * 7.2) + 18));
-    }
+        $longestLine = collect($this->wrapLabelLines($name))
+            ->map(fn (string $line) => mb_strlen($line))
+            ->max();
 
-    private function spacing(int $count): int
-    {
-        return match (true) {
-            $count <= 12 => 110,
-            $count <= 24 => 96,
-            default => 84,
-        };
-    }
-
-    private function width(int $count, int $spacing): int
-    {
-        return max(1200, (self::MARGIN_X * 2) + (($count - 1) * $spacing));
+        return max(76, min(190, (int) ceil($longestLine * 7.2) + 18));
     }
 
     private function uniqueStations(array $topology): Collection

@@ -21,6 +21,9 @@ Route::get('/', HomeController::class)->name('home');
 Route::get('/map-diagnostic', fn () => app()->isLocal()
     ? view('map-diagnostic')
     : abort(404))->name('map.diagnostic');
+Route::get('/map-line-diagnostic', fn () => app()->isLocal()
+    ? view('map-line-diagnostic')
+    : abort(404))->name('map.line-diagnostic');
 Route::get('/debug/database', fn () => app()->isLocal()
     ? response()->json([
         'driver' => DB::connection()->getDriverName(),
@@ -30,6 +33,9 @@ Route::get('/debug/database', fn () => app()->isLocal()
         'station_line_relations' => DB::table('station_line')->count(),
     ])
     : abort(404))->name('debug.database');
+Route::get('/debug/diagram-container', fn () => app()->isLocal()
+    ? view('debug.diagram-container')
+    : abort(404))->name('debug.diagram-container');
 Route::get('/debug/line-diagrams', function () {
     if (! app()->isLocal()) {
         abort(404);
@@ -55,7 +61,7 @@ Route::get('/debug/line-diagrams', function () {
     ]);
 })->name('debug.line-diagrams');
 Route::get('/api/map', MapDataController::class)->name('api.map');
-Route::get('/api/map/search', StationSearchController::class)->middleware('throttle:30,1')->name('api.map.search');
+Route::get('/api/map/search', StationSearchController::class)->middleware('throttle:map-search')->name('api.map.search');
 Route::get('/stations/{station:slug}', [PublicStationController::class, 'show'])->name('stations.show');
 Route::get('/lignes/{line:slug}', [PublicLineController::class, 'show'])->name('lines.show');
 Route::get('/photos/{photo:slug}', [PublicPhotoController::class, 'show'])->name('photos.show');

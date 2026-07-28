@@ -59,7 +59,7 @@ class PhotoSelectionApiController extends Controller
                 ->values()
                 ->map(fn (StationAccess $access, int $index) => [
                     'id' => $access->id,
-                    'name' => $this->accessLabel($access, $index),
+                    'name' => $access->displayName($index),
                     'reference' => $access->reference,
                     'latitude' => $access->latitude !== null ? (float) $access->latitude : null,
                     'longitude' => $access->longitude !== null ? (float) $access->longitude : null,
@@ -68,10 +68,4 @@ class PhotoSelectionApiController extends Controller
         ]);
     }
 
-    private function accessLabel(StationAccess $access, int $index): string
-    {
-        $label = trim((string) ($access->name ?: $access->reference ?: $access->description));
-
-        return $label !== '' ? $label : 'Accès '.($index + 1);
-    }
 }

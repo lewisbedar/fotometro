@@ -55,3 +55,9 @@ La dépublication remet `is_published = false` et `published_at = null`; la date
 Règle provisoire : 0 photo publiée donne `not_started`, 1 à 4 donnent `in_progress`, 5 ou plus donnent `documented`.
 
 `planned` et `complete` restent manuels et ne sont pas écrasés automatiquement.
+
+## Consultation publique
+
+La fiche station est la porte d’entrée principale du catalogue photographique. Elle affiche une photo principale, une galerie paginée, les filtres par catégories représentées et les filtres par accès.
+
+La page photo conserve la navigation précédente/suivante dans la même station uniquement, en respectant l’ordre public `sort_order`, `taken_at`, `id`. Les métadonnées vides ne sont pas affichées, et les coordonnées GPS EXIF de la photo ne sont pas exposées publiquement.

@@ -8,6 +8,7 @@ use App\Models\Station;
 use Database\Seeders\LineStationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class MapExplorerTest extends TestCase
@@ -33,7 +34,8 @@ class MapExplorerTest extends TestCase
             ->assertSee('Progression globale')
             ->assertSee('Rechercher une station')
             ->assertSee('Lignes')
-            ->assertSee('Filtres');
+            ->assertSee('Filtres')
+            ->assertSee('À propos');
     }
 
     public function test_homepage_renders_floating_panels_and_diagram_shell(): void
@@ -47,8 +49,202 @@ class MapExplorerTest extends TestCase
             ->assertSee('id="lines-panel"', false)
             ->assertSee('map-context-panel', false)
             ->assertSee('line-diagram-panel', false)
+            ->assertSee('map-about-modal', false)
+            ->assertSee('Île-de-France Mobilités')
+            ->assertSee('OpenStreetMap contributors')
             ->assertSee('Entrees et sorties')
             ->assertSee('Bientot disponible');
+    }
+
+    public function test_line_diagram_svg_is_guarded_by_layout_and_not_rendered_with_svg_x_for(): void
+    {
+        $partial = file_get_contents(resource_path('views/partials/map/line-diagram-svg.blade.php'));
+        $js = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringContainsString('x-if="hasSelectedLineLayout"', $partial);
+        $this->assertStringContainsString('x-ref="lineDiagramSvgHost"', $partial);
+        $this->assertStringNotContainsString('selectedLine.topology.layout.segments', $partial);
+        $this->assertStringNotContainsString('selectedLine.topology.layout.stations', $partial);
+        $this->assertStringNotContainsString('<template x-for="segment', $partial);
+        $this->assertStringContainsString('get hasSelectedLineLayout()', $js);
+        $this->assertStringContainsString('renderSelectedLineDiagram()', $js);
+        $this->assertStringContainsString("document.createElementNS('http://www.w3.org/2000/svg'", $js);
+    }
+
+    public function test_map_search_route_uses_dedicated_rate_limiter(): void
+    {
+        $middleware = Route::getRoutes()->getByName('api.map.search')->gatherMiddleware();
+        $provider = file_get_contents(app_path('Providers/AppServiceProvider.php'));
+
+        $this->assertContains('throttle:map-search', $middleware);
+        $this->assertStringContainsString("RateLimiter::for('map-search'", $provider);
+        $this->assertStringContainsString('Limit::perMinute(120)', $provider);
+    }
+
+    public function test_map_search_allows_normal_fast_typing_without_legacy_thirty_request_limit(): void
+    {
+        $this->seed(LineStationSeeder::class);
+
+        for ($attempt = 0; $attempt < 35; $attempt++) {
+            $this->getJson('/api/map/search?q=nation')->assertOk();
+        }
+    }
+
+    public function test_map_search_ui_uses_local_debounced_search(): void
+    {
+        $partial = file_get_contents(resource_path('views/partials/map/topbar.blade.php'));
+        $js = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringContainsString('x-on:input="queueSearch()"', $partial);
+        $this->assertStringContainsString('searchTimer', $js);
+        $this->assertStringContainsString('setTimeout(() =>', $js);
+        $this->assertStringContainsString('}, 300)', $js);
+        $this->assertStringContainsString('normalizeSearchText(value)', $js);
+        $this->assertStringContainsString(".replace(/\\p{Diacritic}/gu, '')", $js);
+        $this->assertStringContainsString('finally {', $js);
+        $this->assertStringContainsString('this.searchLoading = false;', $js);
+        $this->assertStringNotContainsString('new URL(this.searchEndpoint', $js);
+    }
+
+    public function test_line_geojson_normalizer_outputs_valid_maplibre_feature_collection(): void
+    {
+        $js = file_get_contents(resource_path('js/app.js'));
+        $explorerJs = str($js)->before('window.fotometroPhotoForm = function fotometroPhotoForm')->toString();
+
+        $this->assertStringContainsString('let mapInstance = null;', $explorerJs);
+        $this->assertStringContainsString("const maplibreWorkerUrl = '/vendor/maplibre-gl/maplibre-gl-worker.mjs';", $js);
+        $this->assertStringContainsString('maplibregl.setWorkerUrl?.(maplibreWorkerUrl);', $explorerJs);
+        $this->assertStringContainsString('getMap()', $explorerJs);
+        $this->assertStringNotContainsString('map: null,', $explorerJs);
+        $this->assertStringNotContainsString('maplibregl: null,', $explorerJs);
+        $this->assertStringContainsString("type: 'FeatureCollection'", $js);
+        $this->assertStringContainsString('normalizeLineGeoJsonFeatures(pathGeojson)', $js);
+        $this->assertStringContainsString("pathGeojson.type === 'FeatureCollection'", $js);
+        $this->assertStringContainsString("['LineString', 'MultiLineString'].includes", $js);
+        $this->assertStringContainsString('flatMap((line) => this.normalizeLineGeoJsonFeatures', $js);
+        $this->assertStringContainsString(".map((coordinates) => ({ type: 'LineString', coordinates }))", $js);
+        $this->assertStringContainsString("'line-cap': 'round'", $js);
+        $this->assertStringContainsString("'line-join': 'round'", $js);
+        $this->assertStringContainsString("'line-color': this.debugLinesEnabled ? '#ff0000' : ['coalesce', ['get', 'color'], '#ff0000']", $js);
+        $this->assertStringContainsString("'line-width': this.debugLinesEnabled ? 12 : ['case', ['==', ['get', 'selected'], true], 8, 5]", $js);
+        $this->assertStringContainsString('[fotometro] line feature count', $js);
+        $this->assertStringContainsString("console.group('[fotometro] line layer diagnostic')", $js);
+        $this->assertStringContainsString('rendered line features', $js);
+        $this->assertStringContainsString('isPlausibleParisCoordinate(coordinate)', $js);
+        $this->assertStringContainsString("this.getMap().moveLayer('fotometro-lines-layer', 'fotometro-stations-layer')", $js);
+        $this->assertStringContainsString("this.getMap().moveLayer('fotometro-stations-layer')", $js);
+        $this->assertStringContainsString('const maplibregl = this.getMapLibre();', $explorerJs);
+        $this->assertStringContainsString('new maplibregl.LngLatBounds', $explorerJs);
+        $this->assertStringContainsString('new maplibregl.Popup', $explorerJs);
+        $this->assertStringNotContainsString('new this.getMapLibre().', $explorerJs);
+        $this->assertStringContainsString('container.__fotometroMapInstance', $explorerJs);
+    }
+
+    public function test_isolated_line_diagnostic_page_is_available_only_locally(): void
+    {
+        $this->seed(LineStationSeeder::class);
+        $this->app->detectEnvironment(fn () => 'local');
+
+        $this->get('/map-line-diagnostic')
+            ->assertOk()
+            ->assertSee('map-line-diagnostic-canvas', false);
+
+        $this->assertFileExists(resource_path('js/map-line-diagnostic.js'));
+
+        $diagnosticJs = file_get_contents(resource_path('js/map-line-diagnostic.js'));
+
+        $this->assertStringContainsString("params.get('dataset') || 'all'", $diagnosticJs);
+        $this->assertStringContainsString("mode === 'minimal'", $diagnosticJs);
+        $this->assertStringContainsString('line1-single', $diagnosticJs);
+        $this->assertStringContainsString('line1-multi', $diagnosticJs);
+        $this->assertStringContainsString('line1-no-properties', $diagnosticJs);
+        $this->assertStringContainsString("params.get('basemap') === 'none'", $diagnosticJs);
+        $this->assertStringContainsString('validationReport(payload)', $diagnosticJs);
+        $this->assertStringContainsString("finalize('timeout')", $diagnosticJs);
+        $this->assertStringContainsString('visible: renderedFeatures > 0', $diagnosticJs);
+        $this->assertStringContainsString("console.log('[fotometro diagnostic] maplibre version'", $diagnosticJs);
+        $this->assertStringContainsString('maplibregl.getVersion?.()', $diagnosticJs);
+        $this->assertStringContainsString("const maplibreWorkerUrl = '/vendor/maplibre-gl/maplibre-gl-worker.mjs';", $diagnosticJs);
+        $this->assertStringContainsString('maplibregl.setWorkerUrl?.(maplibreWorkerUrl);', $diagnosticJs);
+        $this->assertStringContainsString("recordError('[fotometro diagnostic] MAP ERROR'", $diagnosticJs);
+
+        $this->get('/debug/diagram-container')
+            ->assertOk()
+            ->assertSee('line-diagram-scroll', false)
+            ->assertSee('width="3000"', false);
+    }
+
+    public function test_line_diagram_svg_is_constrained_to_horizontal_scroll_panel(): void
+    {
+        $partial = file_get_contents(resource_path('views/partials/map/line-diagram-svg.blade.php'));
+        $css = file_get_contents(resource_path('css/app.css'));
+        $js = file_get_contents(resource_path('js/app.js'));
+
+        $this->assertStringContainsString('class="line-diagram-scroll', $partial);
+        $this->assertStringContainsString('class="line-diagram-content"', $partial);
+        $this->assertStringContainsString('x-ref="lineDiagramScroll"', $partial);
+        $this->assertStringContainsString('class="line-diagram-host"', $partial);
+        $this->assertStringContainsString('.line-diagram-panel', $css);
+        $this->assertStringContainsString('overflow: hidden;', $css);
+        $this->assertStringContainsString('display: flex;', $css);
+        $this->assertStringContainsString('flex-direction: column;', $css);
+        $this->assertStringContainsString('.line-diagram-content', $css);
+        $this->assertStringContainsString('.line-diagram-scroll', $css);
+        $this->assertStringContainsString('min-width: 0;', $css);
+        $this->assertStringContainsString('overflow-x: auto;', $css);
+        $this->assertStringContainsString('overflow-y: auto;', $css);
+        $this->assertStringContainsString('scrollbar-width: auto !important;', $css);
+        $this->assertStringContainsString('display: block !important;', $css);
+        $this->assertStringContainsString('.line-diagram-host', $css);
+        $this->assertStringContainsString('width: max-content;', $css);
+        $this->assertStringContainsString('min-width: max-content;', $css);
+        $this->assertStringContainsString('max-width: none;', $css);
+        $this->assertStringContainsString('const scroller = this.$refs.lineDiagramScroll;', $js);
+        $this->assertStringContainsString('scroller.scrollTo({', $js);
+        $this->assertStringContainsString('left: Math.max(0, left)', $js);
+        $this->assertStringContainsString('[fotometro] diagram scroll', $js);
+        $this->assertStringContainsString('debugRealDiagram()', $js);
+        $this->assertStringContainsString("[fotometro] real diagram diagnostic", $js);
+        $this->assertStringContainsString('elementFromPoint', $js);
+        $this->assertStringNotContainsString('x-transition', $partial);
+        $this->assertStringNotContainsString('lineDiagramScroller', $js);
+    }
+
+    public function test_line_diagram_layout_coordinates_are_numeric_when_exposed(): void
+    {
+        $this->seed(LineStationSeeder::class);
+
+        collect($this->getJson('/api/map')->assertOk()->json('lines'))->each(function (array $line): void {
+            $layout = $line['topology']['layout'] ?? null;
+
+            if (! $layout) {
+                return;
+            }
+
+            foreach ($layout['segments'] ?? [] as $segment) {
+                $this->assertIsNumeric($segment['x1']);
+                $this->assertIsNumeric($segment['y1']);
+                $this->assertIsNumeric($segment['x2']);
+                $this->assertIsNumeric($segment['y2']);
+            }
+
+            foreach ($layout['stations'] ?? [] as $station) {
+                $this->assertIsNumeric($station['x']);
+                $this->assertIsNumeric($station['y']);
+                $this->assertIsNumeric($station['label_x']);
+                $this->assertIsNumeric($station['label_y']);
+            }
+        });
+    }
+
+    public function test_homepage_logo_container_is_not_stretched(): void
+    {
+        $css = file_get_contents(resource_path('css/app.css'));
+
+        $this->assertStringContainsString('.map-logo-block', $css);
+        $this->assertStringContainsString('width: fit-content;', $css);
+        $this->assertStringContainsString('display: inline-flex;', $css);
+        $this->assertStringContainsString('grid-template-columns: auto minmax(18rem, 34rem) auto;', $css);
     }
 
     public function test_raster_driver_is_the_default_basemap_configuration(): void
@@ -181,6 +377,30 @@ class MapExplorerTest extends TestCase
         $this->assertSame(1, $stations->where('slug', 'chatelet')->count());
         $this->assertCount(3, $stations->firstWhere('slug', 'chatelet')['lines']);
         $this->assertNull($response->json('lines.0.path_geojson'));
+    }
+
+    public function test_map_endpoint_exposes_line_geometry_when_available(): void
+    {
+        $line = Line::factory()->create([
+            'code' => '42',
+            'slug' => 'ligne-42',
+            'path_geojson' => [
+                'type' => 'LineString',
+                'coordinates' => [[2.34, 48.85], [2.36, 48.86]],
+            ],
+        ]);
+        $station = Station::factory()->create([
+            'latitude' => 48.85,
+            'longitude' => 2.34,
+            'is_active' => true,
+        ]);
+        $station->lines()->attach($line, ['position' => 1]);
+
+        $payload = collect($this->getJson('/api/map')->assertOk()->json('lines'))->firstWhere('code', '42');
+
+        $this->assertSame('LineString', $payload['path_geojson']['type']);
+        $this->assertSame([[2.34, 48.85], [2.36, 48.86]], $payload['path_geojson']['coordinates']);
+        $this->assertArrayHasKey('layout', $payload['topology']);
     }
 
     public function test_map_api_contains_ordered_line_stations_for_diagram(): void
@@ -360,6 +580,24 @@ class MapExplorerTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.slug', 'chatelet')
             ->assertJsonPath('data.0.lines.0.code', '1');
+
+        $this->getJson('/api/map/search?q=cha')
+            ->assertOk()
+            ->assertJsonPath('data.0.slug', 'chatelet');
+
+        $this->getJson('/api/map/search?q=ch%C3%A2telet')
+            ->assertOk()
+            ->assertJsonPath('data.0.slug', 'chatelet');
+    }
+
+    public function test_search_endpoint_returns_line_results_separately(): void
+    {
+        $this->seed(LineStationSeeder::class);
+
+        $this->getJson('/api/map/search?q=ligne%201')
+            ->assertOk()
+            ->assertJsonPath('lines.0.code', '1')
+            ->assertJsonPath('lines.0.name', 'Ligne 1');
     }
 
     public function test_map_endpoint_always_returns_station_lines_as_zero_indexed_arrays(): void

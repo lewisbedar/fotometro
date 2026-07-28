@@ -16,7 +16,7 @@
             </div>
 
             <div class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-black/5">
-                <p class="text-sm text-black/55">{{ $documentedCount }} stations documentees sur {{ $stationCount }}</p>
+                <p class="text-sm text-black/55">{{ $documentedCount }} stations documentées sur {{ $stationCount }}</p>
                 <div class="mt-3 h-2 rounded-full bg-black/10">
                     <div class="h-2 rounded-full" style="width: {{ $coveragePercentage }}%; background: {{ $line->color }}"></div>
                 </div>

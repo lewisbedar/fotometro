@@ -103,6 +103,19 @@ class StationImporter
                 $stop = $this->upsertStop($record, $stopExternalId, $zoneExternalId, $area, $station);
                 $seenStopIds[$stop->external_id] = true;
 
+                // A station's public point must represent every line passing
+                // through it, not just whichever stop happened to be imported
+                // first: interchange stations (Saint-Lazare, Châtelet...) have
+                // one StationStop per line, often tens of metres apart in
+                // reality, so the point is recentred on all of them here.
+                if ($area) {
+                    $this->recentreOnStops($area, StationStop::query()->where('station_area_id', $area->id));
+                }
+
+                if ($station) {
+                    $this->recentreOnStops($station, StationStop::query()->where('station_id', $station->id));
+                }
+
                 if (! $station) {
                     return;
                 }
@@ -269,6 +282,20 @@ class StationImporter
         }
 
         return StationStop::query()->create($attributes);
+    }
+
+    private function recentreOnStops(Station|StationArea $target, \Illuminate\Database\Eloquent\Builder $stops): void
+    {
+        $centroid = $stops->toBase()->selectRaw('avg(latitude) as latitude, avg(longitude) as longitude')->first();
+
+        if (! $centroid || $centroid->latitude === null || $centroid->longitude === null) {
+            return;
+        }
+
+        $target->forceFill([
+            'latitude' => $centroid->latitude,
+            'longitude' => $centroid->longitude,
+        ])->save();
     }
 
     private function isMetro(array $record): bool
