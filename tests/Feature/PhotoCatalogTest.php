@@ -434,6 +434,126 @@ class PhotoCatalogTest extends TestCase
         $this->assertStringNotContainsString('originals', $this->get(route('photos.show', $ready))->getContent());
     }
 
+    public function test_station_page_displays_enriched_gallery_filters_and_accesses(): void
+    {
+        $station = Station::factory()->create([
+            'name' => 'Châtelet',
+            'slug' => 'chatelet',
+            'latitude' => 48.8586,
+            'longitude' => 2.347,
+            'is_active' => true,
+        ]);
+        $line = Line::factory()->create(['code' => '1', 'name' => 'Ligne 1', 'slug' => 'ligne-1']);
+        $station->lines()->attach($line, ['position' => 1]);
+        $root = PhotoCategory::factory()->create(['name' => 'Extérieur', 'slug' => 'exterieur', 'parent_id' => null, 'sort_order' => 1]);
+        $child = PhotoCategory::factory()->create(['name' => 'Entrée', 'slug' => 'exterieur-entree', 'parent_id' => $root->id, 'sort_order' => 1]);
+        $otherRoot = PhotoCategory::factory()->create(['name' => 'Intérieur', 'slug' => 'interieur', 'parent_id' => null, 'sort_order' => 2]);
+        $access = StationAccess::query()->create([
+            'external_id' => 'ACCESS:CHATELET:1',
+            'name' => 'Accès Rivoli',
+            'street' => 'Rue de Rivoli',
+            'latitude' => 48.8587,
+            'longitude' => 2.3472,
+            'is_active' => true,
+        ]);
+        $station->accesses()->attach($access->id);
+        $featured = Photo::factory()->create([
+            'station_id' => $station->id,
+            'station_access_id' => $access->id,
+            'photo_category_id' => $child->id,
+            'title' => 'Entrée Rivoli',
+            'is_featured' => true,
+            'sort_order' => 2,
+            'taken_at' => now()->subDay(),
+        ]);
+        Photo::factory()->create([
+            'station_id' => $station->id,
+            'photo_category_id' => $otherRoot->id,
+            'title' => 'Quai central',
+            'sort_order' => 3,
+        ]);
+        Photo::factory()->create([
+            'station_id' => $station->id,
+            'title' => 'Brouillon',
+            'processing_status' => PhotoProcessingStatus::Ready,
+            'is_published' => false,
+        ]);
+
+        $this->get(route('stations.show', $station))
+            ->assertOk()
+            ->assertSee('Photos de Châtelet')
+            ->assertSee('Entrée Rivoli')
+            ->assertSee('Documentation photographique')
+            ->assertSee('Extérieur (1)')
+            ->assertSee('Intérieur (1)')
+            ->assertSee('Entrées et sorties')
+            ->assertSee('Accès Rivoli')
+            ->assertSee('Rue de Rivoli')
+            ->assertSee('data-raster-url', false)
+            ->assertDontSee('Brouillon');
+
+        $this->assertSame($featured->id, Photo::query()->where('is_featured', true)->first()->id);
+    }
+
+    public function test_station_gallery_filters_by_root_category_subcategory_and_access(): void
+    {
+        $station = Station::factory()->create(['slug' => 'republique']);
+        $root = PhotoCategory::factory()->create(['name' => 'Extérieur', 'slug' => 'exterieur']);
+        $child = PhotoCategory::factory()->create(['name' => 'Entrée', 'slug' => 'exterieur-entree', 'parent_id' => $root->id]);
+        $other = PhotoCategory::factory()->create(['name' => 'Signalétique', 'slug' => 'signaletique']);
+        $access = StationAccess::query()->create(['external_id' => 'ACCESS:REP:1', 'name' => 'Accès Temple', 'is_active' => true]);
+        $station->accesses()->attach($access->id);
+
+        Photo::factory()->create(['station_id' => $station->id, 'station_access_id' => $access->id, 'photo_category_id' => $child->id, 'title' => 'Photo entrée']);
+        Photo::factory()->create(['station_id' => $station->id, 'photo_category_id' => $other->id, 'title' => 'Photo panneau']);
+
+        $this->get(route('stations.show', ['station' => $station, 'category' => 'exterieur']))
+            ->assertOk()
+            ->assertSee('Photo entrée')
+            ->assertDontSee('Photo panneau');
+
+        $this->get(route('stations.show', ['station' => $station, 'category' => 'exterieur-entree']))
+            ->assertOk()
+            ->assertSee('Photo entrée')
+            ->assertDontSee('Photo panneau');
+
+        $this->get(route('stations.show', ['station' => $station, 'access' => $access->id]))
+            ->assertOk()
+            ->assertSee('Photo entrée')
+            ->assertDontSee('Photo panneau');
+    }
+
+    public function test_photo_page_hides_empty_metadata_and_uses_station_neighbors_only(): void
+    {
+        $station = Station::factory()->create();
+        $otherStation = Station::factory()->create();
+        $previous = Photo::factory()->create(['station_id' => $station->id, 'title' => 'Avant', 'sort_order' => 1]);
+        $current = Photo::factory()->create([
+            'station_id' => $station->id,
+            'title' => 'Courante',
+            'sort_order' => 2,
+            'camera_make' => null,
+            'camera_model' => null,
+            'lens' => null,
+            'focal_length' => null,
+            'aperture' => null,
+            'shutter_speed' => null,
+            'iso' => null,
+        ]);
+        $next = Photo::factory()->create(['station_id' => $station->id, 'title' => 'Après', 'sort_order' => 3]);
+        Photo::factory()->create(['station_id' => $otherStation->id, 'title' => 'Autre station', 'sort_order' => 2]);
+
+        $response = $this->get(route('photos.show', $current))->assertOk();
+
+        $response->assertSee('Photo précédente')
+            ->assertSee(route('photos.show', $previous), false)
+            ->assertSee('Photo suivante')
+            ->assertSee(route('photos.show', $next), false)
+            ->assertDontSee('Autre station')
+            ->assertDontSee('Focale')
+            ->assertDontSee('ISO');
+    }
+
     public function test_delete_photo_removes_files_and_updates_coverage(): void
     {
         Storage::fake('local');

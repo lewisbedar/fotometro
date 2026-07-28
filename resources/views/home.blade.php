@@ -40,9 +40,13 @@
         @include('partials.map.global-progress')
         @include('partials.map.filters-panel')
         @include('partials.map.lines-panel')
-        @include('partials.map.station-panel')
         @include('partials.map.line-panel')
         @include('partials.map.line-diagram-svg')
+        @include('partials.map.about-modal')
+
+        <button type="button" class="map-about-link map-glass" x-on:click="openAbout()" x-bind:aria-expanded="isAboutOpen.toString()" aria-controls="map-about-title">
+            À propos
+        </button>
 
         <div class="absolute inset-x-4 bottom-4 z-50 rounded-lg border border-red-200 bg-white p-4 text-sm text-red-800 shadow-sm md:inset-x-auto md:right-4 md:max-w-md" x-show="mapFatalError && isLocal" x-cloak>
             <p class="font-semibold">Erreur MapLibre</p>

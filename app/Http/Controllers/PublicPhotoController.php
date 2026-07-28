@@ -16,6 +16,7 @@ class PublicPhotoController extends Controller
             ->publiclyVisible()
             ->where('station_id', $photo->station_id)
             ->orderBy('sort_order')
+            ->orderByRaw('taken_at IS NULL')
             ->orderBy('taken_at')
             ->orderBy('id')
             ->get(['id', 'slug', 'title', 'original_filename']);

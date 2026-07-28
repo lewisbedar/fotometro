@@ -47,3 +47,11 @@ Le schema desktop lit `lines[].topology.layout` fourni par `/api/map`. Cette str
 Le backend calcule les coordonnees SVG: dimensions, viewBox, segments, noeuds, labels, cartouches de terminus, correspondances et branches. Alpine rend ces coordonnees sans improviser la geometrie. Les lignes branchees disposent de `topology.branches`; les boucles utilisent les types `loop` ou `partial-loop`. Une station commune a plusieurs sequences reste une seule station publique, mais toutes ses occurrences visuelles peuvent etre surlignees.
 
 Sur mobile, une liste verticale separee reste utilisee pour ne pas reduire le SVG desktop complexe. Les choix metier detailles sont documentes dans `docs/line-topology.md`.
+
+# Recherche et À propos
+
+La recherche de la barre supérieure distingue les sections `Lignes` et `Stations`. Les lignes utilisent l’icône locale `resources/views/components/icons/metro.blade.php`, monochrome et compatible `currentColor`.
+
+Le lien `À propos` est placé en bas à gauche au-dessus de la carte, sans masquer l’attribution MapLibre. Il ouvre `resources/views/partials/map/about-modal.blade.php`, une modale Alpine fermable par le bouton, Échap ou clic hors fenêtre. La carte n’est pas recréée à l’ouverture de cette modale.
+
+Le conteneur du logo de l’accueil utilise `width: fit-content`, `display: inline-flex` et une colonne CSS `auto`; il ne s’étire donc plus horizontalement dans la topbar.

@@ -95,3 +95,9 @@ Chaque ligne expose aussi `topology`, prepare cote Laravel depuis `line_station_
 Le frontend consomme cette structure et ne reconstruit pas les patterns GTFS. Voir `docs/line-topology.md`.
 
 `topology.layout` fournit le placement SVG deterministe du schema desktop. Les coordonnees sont calculees cote Laravel par `LineDiagramLayout`; le frontend ne determine pas les positions des stations.
+
+# Corrections explorateur
+
+Les tracés MapLibre acceptent désormais plusieurs formes GeoJSON valides : `Feature`, `LineString`, `MultiLineString` et `FeatureCollection`. Cette normalisation évite qu’un tracé IDFM correctement stocké mais sérialisé comme géométrie brute ne disparaisse de la carte. La couche `fotometro-lines-layer` est ajoutée au-dessus du raster et reste sous les marqueurs de stations.
+
+La recherche publique annule les requêtes précédentes avec `AbortController` et ignore les réponses obsolètes. `/api/map/search` retourne les stations dans `data` et les lignes dans `lines`, ce qui permet de présenter des sections distinctes dans la barre de recherche.

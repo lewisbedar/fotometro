@@ -13,8 +13,8 @@
                 type="search"
                 class="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-black/50"
                 placeholder="Rechercher une station..."
-                x-model.debounce.250ms="searchQuery"
-                x-on:input="searchStations()"
+                x-model="searchQuery"
+                x-on:input="queueSearch()"
                 x-on:focus="activePanel = 'search'"
                 x-on:keydown.arrow-down.prevent="moveSearchFocus(1)"
                 x-on:keydown.arrow-up.prevent="moveSearchFocus(-1)"
@@ -27,8 +27,36 @@
         </div>
 
         <div id="station-search-results" class="map-search-results" x-show="searchQuery.length >= 2 && activePanel === 'search'" x-cloak>
-            <template x-if="searchResults.length === 0 && ! searchLoading">
+            <template x-if="searchLoading">
+                <p class="p-3 text-sm text-black/60">Recherche...</p>
+            </template>
+            <template x-if="searchError && ! searchLoading">
+                <p class="p-3 text-sm text-red-700" x-text="searchError"></p>
+            </template>
+            <template x-if="searchResults.length === 0 && searchLineResults.length === 0 && ! searchLoading && ! searchError">
                 <p class="p-3 text-sm text-black/60">Aucune station trouvée.</p>
+            </template>
+            <template x-if="searchLineResults.length > 0">
+                <div>
+                    <p class="px-3 pt-3 text-xs font-semibold uppercase tracking-[0.16em] text-black/45">Lignes</p>
+                    <template x-for="line in searchLineResults" :key="`line-${line.id}`">
+                        <button
+                            type="button"
+                            class="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-black/5 focus:bg-black/5 focus:outline-none"
+                            x-on:click="selectSearchLine(line.id)"
+                        >
+                            <x-icons.metro class="h-5 w-5 shrink-0 text-black/65" />
+                            <span class="grid h-7 min-w-7 place-items-center rounded-full px-1 text-xs font-bold" :style="`background:${safeLineColor(line.color)};color:${safeLineColor(line.text_color)}`" x-text="line.code"></span>
+                            <span>
+                                <span class="block font-medium" x-text="line.name"></span>
+                                <span class="block text-xs text-black/55"><span x-text="line.station_count ?? 0"></span> stations</span>
+                            </span>
+                        </button>
+                    </template>
+                </div>
+            </template>
+            <template x-if="searchResults.length > 0">
+                <p class="px-3 pt-3 text-xs font-semibold uppercase tracking-[0.16em] text-black/45">Stations</p>
             </template>
             <template x-for="(station, index) in searchResults" :key="station.id">
                 <button

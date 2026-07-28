@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class LineDiagramLayoutTest extends TestCase
 {
-    public function test_simple_line_nodes_share_axis_and_labels_are_below_it(): void
+    public function test_simple_line_nodes_share_axis_and_labels_are_above_it(): void
     {
         $layout = $this->layout('1', 'simple', [
             ['key' => 'main', 'stations' => $this->stations(['Defense', 'Chatelet', 'Vincennes'])],
@@ -17,7 +17,7 @@ class LineDiagramLayoutTest extends TestCase
         $this->assertSame('simple', $layout['type']);
         $this->assertCount(1, $layout['segments']);
         $this->assertCount(1, collect($layout['stations'])->pluck('y')->unique());
-        $this->assertTrue(collect($layout['stations'])->every(fn (array $station) => $station['label_y'] >= $layout['axis_y'] + 26));
+        $this->assertTrue(collect($layout['stations'])->every(fn (array $station) => $station['label_y'] <= $layout['axis_y'] - 26));
         $this->assertTrue(collect($layout['stations'])->first()['is_terminus']);
         $this->assertTrue(collect($layout['stations'])->last()['is_terminus']);
         $this->assertNotNull(collect($layout['stations'])->first()['terminus_label_box']);
@@ -147,15 +147,15 @@ class LineDiagramLayoutTest extends TestCase
         $terminus = $stations->firstWhere('external_id', 'IDFM:PUBLIC:71135');
 
         foreach ([$ordinary, $terminus] as $station) {
-            $this->assertSame('end', $station['label_anchor']);
+            $this->assertSame('start', $station['label_anchor']);
             $this->assertSame($station['x'], $station['label_x']);
-            $this->assertGreaterThan($station['y'], $station['label_y']);
+            $this->assertLessThan($station['y'], $station['label_y']);
             $this->assertNotSame($station['y'], $station['label_y']);
         }
 
         $this->assertNotNull($terminus['terminus_label_box']);
         $this->assertGreaterThan($terminus['label_x'], $terminus['terminus_label_box']['x'] + $terminus['terminus_label_box']['width']);
-        $this->assertSame($terminus['label_x'] - $terminus['label_width'] + 8, $terminus['terminus_label_box']['x']);
+        $this->assertSame($terminus['label_x'] - 4, $terminus['terminus_label_box']['x']);
     }
 
     public function test_line_thirteen_northern_branches_and_trunk_follow_reference_table(): void

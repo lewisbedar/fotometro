@@ -50,4 +50,15 @@ class StationAccess extends Model
     {
         return $this->hasMany(Photo::class);
     }
+
+    public function displayName(?int $index = null): string
+    {
+        $label = trim((string) ($this->name ?: $this->reference ?: $this->description));
+
+        if ($label !== '') {
+            return $label;
+        }
+
+        return 'Accès '.(($index ?? 0) + 1);
+    }
 }
