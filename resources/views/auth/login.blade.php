@@ -1,4 +1,4 @@
-<x-layouts.app title="Connexion admin - fotometro">
+<x-layouts.app title="Connexion admin - fotométro">
     <div class="mx-auto max-w-md rounded-lg bg-white p-6 shadow-sm ring-1 ring-black/5">
         <h1 class="text-2xl font-semibold">Administration</h1>
         <p class="mt-2 text-sm text-black/60">Connectez-vous avec le compte administrateur du catalogue.</p>

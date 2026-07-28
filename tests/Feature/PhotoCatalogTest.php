@@ -483,13 +483,13 @@ class PhotoCatalogTest extends TestCase
             ->assertOk()
             ->assertSee('Photos de Châtelet')
             ->assertSee('Entrée Rivoli')
-            ->assertSee('Documentation photographique')
+            ->assertSee('% ·')
             ->assertSee('Extérieur (1)')
             ->assertSee('Intérieur (1)')
-            ->assertSee('Entrées et sorties')
+            ->assertSee('Station et accès')
             ->assertSee('Accès Rivoli')
             ->assertSee('Rue de Rivoli')
-            ->assertSee('data-raster-url', false)
+            ->assertSee('rasterUrl', false)
             ->assertDontSee('Brouillon');
 
         $this->assertSame($featured->id, Photo::query()->where('is_featured', true)->first()->id);
@@ -507,20 +507,23 @@ class PhotoCatalogTest extends TestCase
         Photo::factory()->create(['station_id' => $station->id, 'station_access_id' => $access->id, 'photo_category_id' => $child->id, 'title' => 'Photo entrée']);
         Photo::factory()->create(['station_id' => $station->id, 'photo_category_id' => $other->id, 'title' => 'Photo panneau']);
 
-        $this->get(route('stations.show', ['station' => $station, 'category' => 'exterieur']))
-            ->assertOk()
-            ->assertSee('Photo entrée')
-            ->assertDontSee('Photo panneau');
+        // Both photos always appear in the unfiltered hero mosaic (as the image
+        // alt text, the hover caption, and the lightbox data-title attribute,
+        // so 3 occurrences), regardless of the gallery filter below it. A
+        // filtered gallery keeps "Photo panneau" out of the grid, so it must
+        // not appear a 4th time.
+        foreach ([
+            ['category' => 'exterieur'],
+            ['category' => 'exterieur-entree'],
+            ['access' => $access->id],
+        ] as $filter) {
+            $html = $this->get(route('stations.show', ['station' => $station, ...$filter]))
+                ->assertOk()
+                ->assertSee('Photo entrée')
+                ->getContent();
 
-        $this->get(route('stations.show', ['station' => $station, 'category' => 'exterieur-entree']))
-            ->assertOk()
-            ->assertSee('Photo entrée')
-            ->assertDontSee('Photo panneau');
-
-        $this->get(route('stations.show', ['station' => $station, 'access' => $access->id]))
-            ->assertOk()
-            ->assertSee('Photo entrée')
-            ->assertDontSee('Photo panneau');
+            $this->assertSame(3, substr_count($html, 'Photo panneau'), 'Photo panneau should only appear in the hero (alt + caption + lightbox data), not in the filtered gallery grid, for filter '.json_encode($filter));
+        }
     }
 
     public function test_photo_page_hides_empty_metadata_and_uses_station_neighbors_only(): void
@@ -574,12 +577,70 @@ class PhotoCatalogTest extends TestCase
         $this->assertSame(CoverageStatus::NotStarted, $station->fresh()->coverage_status);
     }
 
+    public function test_admin_can_set_and_unset_station_cover_photo(): void
+    {
+        $station = Station::factory()->create();
+        $photo = Photo::factory()->create(['station_id' => $station->id]);
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('admin.photos.set-cover', $photo))
+            ->assertRedirect();
+
+        $this->assertSame($photo->id, $station->fresh()->cover_photo_id);
+
+        $this->actingAs(User::factory()->create())
+            ->delete(route('admin.photos.unset-cover', $photo))
+            ->assertRedirect();
+
+        $this->assertNull($station->fresh()->cover_photo_id);
+    }
+
+    public function test_unpublished_photo_cannot_be_set_as_cover(): void
+    {
+        $station = Station::factory()->create();
+        $photo = Photo::factory()->create(['station_id' => $station->id, 'is_published' => false]);
+
+        $this->actingAs(User::factory()->create())->post(route('admin.photos.set-cover', $photo));
+
+        $this->assertNull($station->fresh()->cover_photo_id);
+    }
+
+    public function test_unpublishing_the_cover_photo_clears_it(): void
+    {
+        $station = Station::factory()->create();
+        $photo = Photo::factory()->create(['station_id' => $station->id]);
+        $station->forceFill(['cover_photo_id' => $photo->id])->save();
+
+        app(\App\Services\Photos\PhotoPublicationService::class)->unpublish($photo);
+
+        $this->assertNull($station->fresh()->cover_photo_id);
+    }
+
+    public function test_cover_photo_is_prioritized_first_in_hero_mosaic(): void
+    {
+        $station = Station::factory()->create();
+        $first = Photo::factory()->create(['station_id' => $station->id, 'sort_order' => 0]);
+        $cover = Photo::factory()->create(['station_id' => $station->id, 'sort_order' => 1]);
+        $station->forceFill(['cover_photo_id' => $cover->id])->save();
+
+        $html = $this->get(route('stations.show', $station))->assertOk()->getContent();
+
+        $coverPos = strpos($html, route('photos.show', $cover));
+        $firstPos = strpos($html, route('photos.show', $first));
+        $this->assertNotFalse($coverPos);
+        $this->assertNotFalse($firstPos);
+        $this->assertLessThan($firstPos, $coverPos);
+    }
+
     public function test_coverage_rule_preserves_manual_planned_and_complete(): void
     {
         $planned = Station::factory()->create(['coverage_status' => CoverageStatus::Planned]);
         $complete = Station::factory()->create(['coverage_status' => CoverageStatus::Complete]);
         $normal = Station::factory()->create(['coverage_status' => CoverageStatus::NotStarted]);
-        Photo::factory()->count(5)->create(['station_id' => $normal->id]);
+
+        $access = StationAccess::query()->create(['external_id' => 'ACCESS:RULE:1', 'is_active' => true]);
+        $normal->accesses()->attach($access->id);
+        Photo::factory()->create(['station_id' => $normal->id, 'station_access_id' => $access->id]);
 
         app(StationCoverageUpdater::class)->update($planned);
         app(StationCoverageUpdater::class)->update($complete);
@@ -587,7 +648,62 @@ class PhotoCatalogTest extends TestCase
 
         $this->assertSame(CoverageStatus::Planned, $planned->fresh()->coverage_status);
         $this->assertSame(CoverageStatus::Complete, $complete->fresh()->coverage_status);
+        // All accesses photographed but no platform photo yet: halfway there, not "documented".
+        $this->assertSame(CoverageStatus::InProgress, $normal->fresh()->coverage_status);
+        $this->assertSame(50, $normal->fresh()->coverage_percentage);
+
+        $quai = PhotoCategory::factory()->create(['slug' => 'interieur-quai']);
+        Photo::factory()->create(['station_id' => $normal->id, 'photo_category_id' => $quai->id]);
+        app(StationCoverageUpdater::class)->update($normal);
+
         $this->assertSame(CoverageStatus::Documented, $normal->fresh()->coverage_status);
+        $this->assertSame(100, $normal->fresh()->coverage_percentage);
+    }
+
+    public function test_category_breakdown_and_essential_coverage_use_subcategory_checklist(): void
+    {
+        $station = Station::factory()->create();
+
+        $exterior = PhotoCategory::factory()->create(['name' => 'Extérieur']);
+        $exteriorCovered = PhotoCategory::factory()->create(['parent_id' => $exterior->id]);
+        PhotoCategory::factory()->create(['parent_id' => $exterior->id]);
+        PhotoCategory::factory()->create(['parent_id' => $exterior->id]);
+        PhotoCategory::factory()->create(['parent_id' => $exterior->id]);
+
+        $access = StationAccess::query()->create(['external_id' => 'ACCESS:COVERAGE:1', 'is_active' => true]);
+        StationAccess::query()->create(['external_id' => 'ACCESS:COVERAGE:2', 'is_active' => true])->stations()->attach($station->id);
+        $station->accesses()->attach($access->id);
+
+        Photo::factory()->create([
+            'station_id' => $station->id,
+            'photo_category_id' => $exteriorCovered->id,
+            'station_access_id' => $access->id,
+        ]);
+
+        $service = app(\App\Services\Photos\StationPhotoCoverageService::class);
+        $breakdown = $service->categoryBreakdown($station);
+        $exteriorAxis = $breakdown->firstWhere(fn (array $axis) => $axis['category']->is($exterior));
+
+        $this->assertSame(1, $exteriorAxis['covered']);
+        $this->assertSame(4, $exteriorAxis['total']);
+        $this->assertSame(25, $exteriorAxis['percentage']);
+        $this->assertCount(3, $exteriorAxis['missing']);
+        $this->assertFalse($exteriorAxis['missing']->contains('id', $exteriorCovered->id));
+
+        $accessBreakdown = $service->accessBreakdown($station);
+        $this->assertSame(1, $accessBreakdown['covered']);
+        $this->assertSame(2, $accessBreakdown['total']);
+        $this->assertSame(50, $accessBreakdown['percentage']);
+        $this->assertCount(1, $accessBreakdown['missing']);
+        $this->assertFalse($accessBreakdown['missing']->contains('id', $access->id));
+
+        // categoryBreakdown/accessBreakdown stay purely informational ("what's
+        // missing"); only accesses + platforms drive essentialCoverage now.
+        $essential = $service->essentialCoverage($station, $accessBreakdown);
+        $this->assertSame(50, $essential['accesses_percentage']);
+        $this->assertFalse($essential['platforms_photographed']);
+        $this->assertSame(25, $essential['percentage']);
+        $this->assertFalse($essential['complete']);
     }
 
     public function test_photo_category_seeder_updates_accented_names_without_changing_slugs(): void
@@ -620,19 +736,19 @@ class PhotoCatalogTest extends TestCase
 
         $this->get(route('stations.show', $station))
             ->assertOk()
-            ->assertSee('fotometro');
+            ->assertSee('fotométro');
 
         $this->get(route('lines.show', $line))
             ->assertOk()
-            ->assertSee('fotometro');
+            ->assertSee('fotométro');
 
         $this->get(route('photos.show', $photo))
             ->assertOk()
-            ->assertSee('fotometro');
+            ->assertSee('fotométro');
 
         $this->get(route('login'))
             ->assertOk()
-            ->assertSee('fotometro');
+            ->assertSee('fotométro');
 
         $this->actingAs($user)
             ->get(route('admin.dashboard'))

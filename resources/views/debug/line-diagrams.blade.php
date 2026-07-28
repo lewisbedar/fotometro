@@ -1,4 +1,4 @@
-<x-layouts.app title="Diagnostic schemas de ligne - fotometro" :full-width="true">
+<x-layouts.app title="Diagnostic schemas de ligne - fotométro" :full-width="true">
     <div class="mx-auto max-w-7xl px-4 py-8">
         <div class="mb-8">
             <p class="text-sm font-semibold uppercase tracking-[0.18em] text-black/45">Diagnostic local</p>

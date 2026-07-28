@@ -52,12 +52,22 @@ La dépublication remet `is_published = false` et `published_at = null`; la date
 
 ## Couverture Station
 
-Règle provisoire : 0 photo publiée donne `not_started`, 1 à 4 donnent `in_progress`, 5 ou plus donnent `documented`.
+Règle « suffisante » (`StationPhotoCoverageService::essentialCoverage()`) : une station est considérée comme bien documentée dès qu'elle a une photo de chaque accès actif et au moins une photo de quai (sous-catégorie `interieur-quai`). C'est ce qui pilote `Station::coverage_percentage` et `coverage_status`.
 
-`planned` et `complete` restent manuels et ne sont pas écrasés automatiquement.
+`percentage` est la moyenne de deux composantes : le pourcentage d'accès photographiés (`accessBreakdown`), et 100/0 selon qu'un quai est photographié ou non. Une station sans accès enregistré n'est pas pénalisée : cette composante est alors exclue de la moyenne plutôt que comptée à 0 (mais une station sans aucune photo affiche bien 0 %, pas un plancher artificiel).
+
+`coverage_status` : 0 % donne `not_started` ; entre les deux donne `in_progress` ; `complete` (les deux critères remplis) donne `documented`. `planned` et `complete` (statut manuel) restent manuels et ne sont pas écrasés automatiquement ; `coverage_percentage` continue toutefois à être recalculé même dans ces statuts.
+
+`StationCoverageUpdater` recalcule ceci aux mêmes points d'accroche qu'avant (création, mise à jour, suppression et actions groupées de photos). La commande `fotometro:recalculate-coverage` permet un recalcul rétroactif complet.
+
+Le détail par thématique (`categoryBreakdown()` : Extérieur, Intérieur, Signalétique, Architecture et décoration, Vie et évolution) et par accès (`accessBreakdown()`) reste calculé et exposé par `summarize()` à titre indicatif (« ce qu'il manque »), mais ne pèse plus dans le pourcentage global.
 
 ## Consultation publique
 
-La fiche station est la porte d’entrée principale du catalogue photographique. Elle affiche une photo principale, une galerie paginée, les filtres par catégories représentées et les filtres par accès.
+La fiche station est la porte d’entrée principale du catalogue photographique. Elle affiche une mosaïque de photos vedettes (jusqu'à 4 : la photo de couverture en premier si définie, puis `is_featured` en priorité), une galerie paginée avec filtres par catégories représentées et par accès (voir [stations.md](stations.md#galerie) pour le fonctionnement sans rechargement de page).
+
+## Photo de couverture
+
+`Station::cover_photo_id` (nullable, FK vers `photos`, `nullOnDelete`) identifie la photo qui représente la station : elle passe en premier dans la mosaïque et alimente la vignette affichée dans le popup de la carte publique. Seule une photo publiquement visible (`Photo::publiclyVisible()`) peut être définie comme couverture (bouton sur la fiche admin de la photo) ; dépublier la photo de couverture la retire automatiquement (`PhotoPublicationService::unpublish()`).
 
 La page photo conserve la navigation précédente/suivante dans la même station uniquement, en respectant l’ordre public `sort_order`, `taken_at`, `id`. Les métadonnées vides ne sont pas affichées, et les coordonnées GPS EXIF de la photo ne sont pas exposées publiquement.

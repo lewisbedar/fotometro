@@ -1,4 +1,4 @@
-<x-layouts.app title="Categorie photo - fotometro">
+<x-layouts.app title="Categorie photo - fotométro">
     <form method="POST" action="{{ $category->exists ? route('admin.photo-categories.update', $category) : route('admin.photo-categories.store') }}" class="mx-auto max-w-2xl space-y-5 rounded-lg bg-white p-6 shadow-sm ring-1 ring-black/5">
         @csrf
         @if ($category->exists) @method('PUT') @endif

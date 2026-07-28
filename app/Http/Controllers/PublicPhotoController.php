@@ -26,7 +26,7 @@ class PublicPhotoController extends Controller
             'photo' => $photo,
             'previousPhoto' => $index === false || $index === 0 ? null : $neighbors[$index - 1],
             'nextPhoto' => $index === false || $index >= $neighbors->count() - 1 ? null : $neighbors[$index + 1],
-            'metaDescription' => trim(($photo->title ?: $photo->original_filename).' - '.$photo->station->name.' sur fotometro.'),
+            'metaDescription' => trim(($photo->title ?: $photo->original_filename).' - '.$photo->station->name.' sur fotométro.'),
         ]);
     }
 }

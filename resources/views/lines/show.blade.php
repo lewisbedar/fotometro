@@ -1,5 +1,5 @@
 <x-layouts.app
-    :title="$line->name.' - fotometro'"
+    :title="$line->name.' - fotométro'"
     :description="$metaDescription"
     :canonical="route('lines.show', $line)"
 >
@@ -32,7 +32,7 @@
                         <li class="flex items-center justify-between gap-4 rounded-md border border-black/10 p-3">
                             <div>
                                 <a href="{{ route('stations.show', $station) }}" class="font-semibold hover:underline">{{ $station->name }}</a>
-                                <p class="mt-1 text-sm text-black/60">{{ $station->coverage_status->description() }}</p>
+                                <p class="mt-1 text-sm text-black/60">{{ $station->coverage_status->description() }} · {{ $station->coverage_percentage }} %</p>
                                 <div class="mt-2 flex flex-wrap gap-1">
                                     @foreach ($station->lines->reject(fn ($connection) => $connection->id === $line->id) as $connection)
                                         <span class="rounded-full px-2 py-0.5 text-xs font-bold" style="background: {{ $connection->color }}; color: {{ $connection->text_color }}">{{ $connection->code }}</span>

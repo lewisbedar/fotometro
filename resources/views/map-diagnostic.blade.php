@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Diagnostic MapLibre - fotometro</title>
+        <title>Diagnostic MapLibre - fotométro</title>
         @vite(['resources/css/app.css', 'resources/js/map-diagnostic.js'])
     </head>
     <body class="bg-white">

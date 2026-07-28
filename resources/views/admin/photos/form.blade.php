@@ -1,4 +1,4 @@
-<x-layouts.app title="Modifier photo - fotometro">
+<x-layouts.app title="Modifier photo - fotométro">
     <form method="POST" action="{{ route('admin.photos.update', $photo) }}" class="mx-auto max-w-3xl space-y-5 rounded-lg bg-white p-6 shadow-sm ring-1 ring-black/5">
         @csrf @method('PUT')
         <h1 class="text-2xl font-semibold">Modifier la photo</h1>

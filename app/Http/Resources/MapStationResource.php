@@ -33,6 +33,8 @@ class MapStationResource extends JsonResource
                 'description' => $status->description(),
                 'color' => $status->color(),
             ],
+            'coverage_percentage' => $this->coverage_percentage,
+            'cover_photo_url' => $this->whenLoaded('coverPhoto', fn () => $this->coverPhoto?->thumbnail_url),
             'url' => route('stations.show', $this->slug),
             'access_count' => $this->accesses_count,
             'lines' => $this->whenLoaded('lines', fn () => $this->lines

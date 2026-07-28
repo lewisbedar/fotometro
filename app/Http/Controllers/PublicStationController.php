@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Photo;
-use App\Models\PhotoCategory;
 use App\Models\Station;
 use App\Models\StationAccess;
 use App\Services\Photos\StationPhotoCoverageService;
@@ -25,32 +24,19 @@ class PublicStationController extends Controller
                 ->orderBy('station_accesses.id'),
         ]);
 
-        $selectedCategory = $this->selectedCategory($request);
+        // Only used to seed the initial highlighted access on the map/sidebar
+        // (e.g. a bookmarked ?access= link); the gallery itself resolves and
+        // filters independently inside the StationGallery Livewire component.
         $selectedAccess = $this->selectedAccess($request, $station);
-        $galleryQuery = $this->publicStationPhotos($station)
-            ->when($selectedCategory, fn ($query) => $this->applyCategoryFilter($query, $selectedCategory))
-            ->when($selectedAccess, fn ($query) => $query->where('station_access_id', $selectedAccess->id));
-
-        $photos = $galleryQuery
-            ->paginate(24)
-            ->withQueryString();
 
         $allPhotos = $this->publicStationPhotos($station)->get();
-        $featuredPhoto = $this->featuredPhoto($station);
-        $categoryFilters = $this->categoryFilters($allPhotos);
-        $subCategoryFilters = $selectedCategory && $selectedCategory->parent_id === null
-            ? $this->subCategoryFilters($allPhotos, $selectedCategory)
-            : collect();
+        $featuredPhotos = $this->featuredPhotos($station);
         $accessCards = $this->accessCards($station, $allPhotos);
         $summary = $coverage->summarize($station);
 
         return view('stations.show', [
             'station' => $station,
-            'photos' => $photos,
-            'featuredPhoto' => $featuredPhoto,
-            'categoryFilters' => $categoryFilters,
-            'subCategoryFilters' => $subCategoryFilters,
-            'selectedCategory' => $selectedCategory,
+            'featuredPhotos' => $featuredPhotos,
             'selectedAccess' => $selectedAccess,
             'accessCards' => $accessCards,
             'coverageSummary' => $summary,
@@ -72,18 +58,6 @@ class PublicStationController extends Controller
             ->orderBy('id');
     }
 
-    private function selectedCategory(Request $request): ?PhotoCategory
-    {
-        if (! $request->filled('category')) {
-            return null;
-        }
-
-        return PhotoCategory::query()
-            ->where('slug', $request->query('category'))
-            ->where('is_active', true)
-            ->first();
-    }
-
     private function selectedAccess(Request $request, Station $station): ?StationAccess
     {
         if (! $request->filled('access')) {
@@ -94,64 +68,42 @@ class PublicStationController extends Controller
             ->first(fn (StationAccess $access) => (string) $access->id === (string) $request->query('access'));
     }
 
-    private function applyCategoryFilter($query, PhotoCategory $category): void
+    /**
+     * Up to $limit photos for the hero mosaic: the station's cover photo first
+     * (if set), then featured photos, filled out with the next photos in normal
+     * gallery order.
+     */
+    private function featuredPhotos(Station $station, int $limit = 4): Collection
     {
-        if ($category->parent_id !== null) {
-            $query->where('photo_category_id', $category->id);
-            return;
-        }
+        $cover = $station->cover_photo_id
+            ? Photo::query()->publiclyVisible()->whereKey($station->cover_photo_id)->with(['category.parent', 'stationAccess'])->first()
+            : null;
 
-        $childIds = $category->children()->pluck('id')->all();
-        $query->whereIn('photo_category_id', [$category->id, ...$childIds]);
-    }
-
-    private function featuredPhoto(Station $station): ?Photo
-    {
-        return Photo::query()
+        $rest = Photo::query()
             ->publiclyVisible()
             ->where('station_id', $station->id)
+            ->when($cover, fn ($query) => $query->whereKeyNot($cover->id))
             ->with(['category.parent', 'stationAccess'])
             ->orderByDesc('is_featured')
             ->orderBy('sort_order')
             ->orderByRaw('taken_at IS NULL')
             ->orderBy('taken_at')
             ->orderBy('id')
-            ->first();
-    }
+            ->limit($cover ? $limit - 1 : $limit)
+            ->get();
 
-    private function categoryFilters(Collection $photos): Collection
-    {
-        return $photos
-            ->map(fn (Photo $photo) => $photo->category?->parent ?: $photo->category)
-            ->filter()
-            ->groupBy('id')
-            ->map(fn (Collection $categories, int $id) => [
-                'category' => $categories->first(),
-                'count' => $photos->filter(function (Photo $photo) use ($id): bool {
-                    return $photo->category?->id === $id || $photo->category?->parent_id === $id;
-                })->count(),
-            ])
-            ->sortBy(fn (array $item) => [$item['category']->sort_order, $item['category']->name])
-            ->values();
-    }
-
-    private function subCategoryFilters(Collection $photos, PhotoCategory $root): Collection
-    {
-        return $photos
-            ->map(fn (Photo $photo) => $photo->category)
-            ->filter(fn (?PhotoCategory $category) => $category && (int) $category->parent_id === (int) $root->id)
-            ->groupBy('id')
-            ->map(fn (Collection $categories) => [
-                'category' => $categories->first(),
-                'count' => $categories->count(),
-            ])
-            ->sortBy(fn (array $item) => [$item['category']->sort_order, $item['category']->name])
-            ->values();
+        return $cover ? $rest->prepend($cover) : $rest;
     }
 
     private function accessCards(Station $station, Collection $photos): Collection
     {
         return $station->accesses
+            ->sortBy(fn (StationAccess $access) => sprintf(
+                '%d-%05d-%s',
+                $access->number === null ? 1 : 0,
+                (int) ($access->number ?? 0),
+                $access->displayName()
+            ))
             ->values()
             ->map(function (StationAccess $access, int $index) use ($photos): array {
                 $accessPhotos = $photos
@@ -175,11 +127,13 @@ class PublicStationController extends Controller
                 'name' => $station->name,
                 'latitude' => $station->latitude === null ? null : (float) $station->latitude,
                 'longitude' => $station->longitude === null ? null : (float) $station->longitude,
+                'status_color' => $station->coverage_status->color(),
             ],
             'accesses' => $accessCards
                 ->map(fn (array $card) => [
                     'id' => $card['access']->id,
                     'name' => $card['label'],
+                    'number' => $card['access']->number,
                     'latitude' => $card['access']->latitude === null ? null : (float) $card['access']->latitude,
                     'longitude' => $card['access']->longitude === null ? null : (float) $card['access']->longitude,
                     'photo_count' => $card['photo_count'],

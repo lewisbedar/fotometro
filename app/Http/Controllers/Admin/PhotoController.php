@@ -185,6 +185,26 @@ class PhotoController extends Controller
         return back()->with('status', 'Photo dépubliée.');
     }
 
+    public function setCover(Photo $photo): RedirectResponse
+    {
+        if (! Photo::query()->publiclyVisible()->whereKey($photo->id)->exists()) {
+            return back()->with('status', 'Seule une photo publiée peut être définie comme photo de couverture.');
+        }
+
+        $photo->station->forceFill(['cover_photo_id' => $photo->id])->save();
+
+        return back()->with('status', 'Photo de couverture définie.');
+    }
+
+    public function unsetCover(Photo $photo): RedirectResponse
+    {
+        if ($photo->station->cover_photo_id === $photo->id) {
+            $photo->station->forceFill(['cover_photo_id' => null])->save();
+        }
+
+        return back()->with('status', 'Photo de couverture retirée.');
+    }
+
     public function bulk(Request $request, PhotoProcessor $processor, PhotoPublicationService $publication, StationCoverageUpdater $coverageUpdater, PhotoCacheInvalidator $cacheInvalidator): RedirectResponse
     {
         $data = $request->validate([

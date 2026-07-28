@@ -1,4 +1,4 @@
-<x-layouts.app title="Administration - fotometro">
+<x-layouts.app title="Administration - fotométro">
     <div class="space-y-8">
         <div>
             <p class="text-sm font-semibold uppercase tracking-[0.16em] text-black/55">Administration</p>

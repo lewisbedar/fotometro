@@ -871,6 +871,14 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
             const maplibregl = this.getMapLibre();
             const content = document.createElement('div');
 
+            if (station.cover_photo_url) {
+                const cover = document.createElement('img');
+                cover.src = station.cover_photo_url;
+                cover.alt = '';
+                cover.className = 'station-popup-cover';
+                content.appendChild(cover);
+            }
+
             const title = document.createElement('h3');
             title.className = 'station-popup-title text-base font-semibold';
             title.textContent = station.name;
@@ -901,7 +909,10 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
             statusDot.className = 'station-popup-status-dot';
             statusDot.style.background = this.safeLineColor(station.coverage_status.color);
             status.appendChild(statusDot);
-            status.appendChild(document.createTextNode(station.coverage_status.description));
+            const statusLabel = Number.isFinite(station.coverage_percentage)
+                ? `${station.coverage_status.description} (${station.coverage_percentage} %)`
+                : station.coverage_status.description;
+            status.appendChild(document.createTextNode(statusLabel));
             content.appendChild(status);
 
             const link = document.createElement('a');
@@ -2346,13 +2357,13 @@ window.fotometroStationAccessMap = function fotometroStationAccessMap(options) {
 
             if (stationCoordinate) {
                 coordinates.push(stationCoordinate);
-                this.addMarker(stationCoordinate, this.payload.station.name, 'station', false, null);
+                this.addMarker(stationCoordinate, this.payload.station.name, 'station', false, null, false, this.payload.station.status_color);
             }
 
             this.geolocatedAccesses().forEach((access) => {
                 const coordinate = [Number(access.longitude), Number(access.latitude)];
                 coordinates.push(coordinate);
-                this.addMarker(coordinate, access.name, 'access', String(access.id) === String(this.selectedAccessId), access.id, access.photo_count > 0);
+                this.addMarker(coordinate, access.name, 'access', String(access.id) === String(this.selectedAccessId), access.id, access.photo_count > 0, null, access.number);
             });
 
             if (coordinates.length === 0) {
@@ -2389,18 +2400,29 @@ window.fotometroStationAccessMap = function fotometroStationAccessMap(options) {
                     duration: 250,
                 });
             }
+
+            if (window.Livewire) {
+                window.Livewire.dispatch('filterByAccess', { accessId: Number(accessId) });
+            }
         },
 
-        addMarker(coordinate, label, type, selected, id, hasPhotos = false) {
+        addMarker(coordinate, label, type, selected, id, hasPhotos = false, statusColor = null, number = null) {
             const marker = document.createElement('button');
             marker.type = 'button';
+            const numbered = type === 'access' && number;
             marker.className = type === 'station'
                 ? 'h-5 w-5 rounded-full border-2 border-white bg-black shadow'
-                : 'h-4 w-4 rounded-full border-2 border-white shadow';
-            marker.style.backgroundColor = type === 'station' ? '#151515' : (hasPhotos ? '#166534' : '#1d4ed8');
+                : numbered
+                    ? 'flex h-6 w-6 items-center justify-center rounded-full border-2 border-white shadow text-[11px] font-bold leading-none text-white'
+                    : 'h-4 w-4 rounded-full border-2 border-white shadow';
+            marker.style.backgroundColor = type === 'station' ? (statusColor || '#151515') : (hasPhotos ? '#166534' : '#1d4ed8');
             marker.classList.toggle('ring-4', selected);
             marker.classList.toggle('ring-amber-300', selected);
             marker.setAttribute('aria-label', label || 'Repère');
+
+            if (numbered) {
+                marker.textContent = String(number);
+            }
 
             if (id) {
                 marker.addEventListener('click', () => this.selectAccess(id));
@@ -2432,6 +2454,81 @@ window.fotometroStationAccessMap = function fotometroStationAccessMap(options) {
             this.clearMarkers();
             this.map?.remove();
             this.map = null;
+        },
+    };
+};
+
+window.fotometroLightbox = function fotometroLightbox() {
+    return {
+        open: false,
+        photo: null,
+        index: -1,
+        total: 0,
+
+        triggers() {
+            return Array.from(this.$root.querySelectorAll('[data-lightbox]'));
+        },
+
+        photoFromTrigger(trigger) {
+            return {
+                image: trigger.dataset.lightboxImage || '',
+                title: trigger.dataset.lightboxTitle || '',
+                description: trigger.dataset.lightboxDescription || '',
+                category: trigger.dataset.lightboxCategory || '',
+                copyright: trigger.dataset.lightboxCopyright || '',
+                credit: trigger.dataset.lightboxCredit || '',
+                license: trigger.dataset.lightboxLicense || '',
+                takenAt: trigger.dataset.lightboxTakenAt || '',
+                url: trigger.dataset.lightboxUrl || trigger.href,
+            };
+        },
+
+        handleClick(event) {
+            const trigger = event.target.closest('[data-lightbox]');
+
+            if (! trigger) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const list = this.triggers();
+            this.index = list.indexOf(trigger);
+            this.total = list.length;
+            this.photo = this.photoFromTrigger(trigger);
+            this.open = true;
+            document.body.classList.add('overflow-hidden');
+        },
+
+        next() {
+            const list = this.triggers();
+
+            if (list.length === 0 || this.index === -1) {
+                return;
+            }
+
+            this.index = (this.index + 1) % list.length;
+            this.total = list.length;
+            this.photo = this.photoFromTrigger(list[this.index]);
+        },
+
+        prev() {
+            const list = this.triggers();
+
+            if (list.length === 0 || this.index === -1) {
+                return;
+            }
+
+            this.index = (this.index - 1 + list.length) % list.length;
+            this.total = list.length;
+            this.photo = this.photoFromTrigger(list[this.index]);
+        },
+
+        close() {
+            this.open = false;
+            this.photo = null;
+            this.index = -1;
+            document.body.classList.remove('overflow-hidden');
         },
     };
 };
