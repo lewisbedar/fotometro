@@ -55,3 +55,9 @@ La selection de ligne ouvre un schema dynamique construit depuis les donnees Lar
 Le produit s'appuie desormais sur un import IDFM pour remplacer les donnees de demonstration lorsque les sources sont configurees. L'import couvre lignes, stations, correspondances, ordre, terminus, branches simples, traces GeoJSON valides et acces si les datasets d'acces sont fournis.
 
 Les donnees editoriales de couverture photographique restent propres a fotometro et ne sont pas ecrasees par l'import.
+
+# Catalogue photographique
+
+Les administrateurs peuvent importer des photographies, les rattacher a une station et optionnellement a un acces, choisir une categorie, renseigner le copyright et publier la photo apres traitement.
+
+La premiere version n'inclut pas la reconnaissance automatique par GPS, les suggestions intelligentes, les albums complexes ni les commentaires publics.

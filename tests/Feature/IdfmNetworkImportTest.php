@@ -366,11 +366,11 @@ class IdfmNetworkImportTest extends TestCase
     {
         $this->get('/')->assertOk()->assertSee('map-logo-block', false);
 
-        $topbar = file_get_contents(resource_path('views/partials/map/topbar.blade.php'));
+        $logo = file_get_contents(resource_path('views/components/fotometro-logo.blade.php'));
         $css = file_get_contents(resource_path('css/app.css'));
 
-        $this->assertStringContainsString("asset('images/logo_fotometro.png')", $topbar);
-        $this->assertStringContainsString('max-w-[240px] object-contain', $topbar);
+        $this->assertStringContainsString("asset('images/logo_fotometro.png')", $logo);
+        $this->assertStringContainsString('max-w-[240px] object-contain', $logo);
         $this->assertStringContainsString('margin-top: 1.45rem;', $css);
         $this->assertStringContainsString('padding: 2.75rem 1rem 6rem;', $css);
     }

@@ -1,0 +1,523 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\CoverageStatus;
+use App\Enums\PhotoProcessingStatus;
+use App\Models\Line;
+use App\Models\Photo;
+use App\Models\PhotoCategory;
+use App\Models\Station;
+use App\Models\StationAccess;
+use App\Models\User;
+use Database\Seeders\PhotoCategorySeeder;
+use App\Services\Photos\PhotoImporter;
+use App\Services\Photos\PhotoProcessor;
+use App\Services\Photos\StationCoverageUpdater;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
+use Tests\TestCase;
+
+class PhotoCatalogTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_photo_model_relations_and_category_tree(): void
+    {
+        $station = Station::factory()->create();
+        $access = StationAccess::query()->create([
+            'external_id' => 'ACCESS:1',
+            'name' => 'Sortie 1',
+            'is_active' => true,
+        ]);
+        $station->accesses()->attach($access->id);
+        $parent = PhotoCategory::factory()->create(['name' => 'Interieur']);
+        $child = PhotoCategory::factory()->create(['parent_id' => $parent->id, 'name' => 'Quai']);
+        $photo = Photo::factory()->create([
+            'station_id' => $station->id,
+            'station_access_id' => $access->id,
+            'photo_category_id' => $child->id,
+        ]);
+
+        $this->assertTrue($photo->station->is($station));
+        $this->assertTrue($photo->stationAccess->is($access));
+        $this->assertTrue($child->parent->is($parent));
+        $this->assertTrue($parent->children->contains($child));
+    }
+
+    public function test_import_valid_jpeg_creates_pending_private_original_and_defaults(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        config([
+            'fotometro.photos.default_copyright_holder' => 'Lewis Bedar',
+            'fotometro.photos.process_synchronously' => false,
+        ]);
+
+        $station = Station::factory()->create();
+        $photo = app(PhotoImporter::class)->import(
+            UploadedFile::fake()->image('republique.jpg', 1200, 800),
+            ['station_id' => $station->id, 'license' => 'all_rights_reserved']
+        );
+
+        $this->assertSame(PhotoProcessingStatus::Pending, $photo->processing_status);
+        $this->assertTrue($photo->publish_when_ready);
+        $this->assertFalse($photo->is_published);
+        $this->assertSame('Lewis Bedar', $photo->copyright_holder);
+        $this->assertStringContainsString('Lewis Bedar', $photo->copyright_notice);
+        $this->assertNotSame('republique.jpg', basename($photo->original_path));
+        Storage::disk('local')->assertExists($photo->original_path);
+        Storage::disk('public')->assertMissing($photo->original_path);
+    }
+
+    public function test_publish_when_ready_auto_publishes_only_after_successful_processing(): void
+    {
+        if (! function_exists('imagecreatetruecolor')) {
+            $this->markTestSkipped('GD is not available.');
+        }
+
+        Storage::fake('local');
+        Storage::fake('public');
+        Cache::put('fotometro.public-map.v1', ['stale' => true], 300);
+        $station = Station::factory()->create();
+        $photo = app(PhotoImporter::class)->import(
+            UploadedFile::fake()->image('auto.jpg', 1200, 800),
+            ['station_id' => $station->id, 'license' => 'all_rights_reserved', 'publish_when_ready' => true]
+        );
+
+        $this->get(route('photos.show', $photo))->assertNotFound();
+
+        app(PhotoProcessor::class)->process($photo);
+        $photo->refresh();
+
+        $this->assertSame(PhotoProcessingStatus::Ready, $photo->processing_status);
+        $this->assertTrue($photo->is_published);
+        $this->assertNotNull($photo->published_at);
+        $this->get(route('photos.show', $photo))->assertOk();
+        $this->assertFalse(Cache::has('fotometro.public-map.v1'));
+    }
+
+    public function test_draft_import_becomes_ready_without_publication_and_failed_never_publishes(): void
+    {
+        if (! function_exists('imagecreatetruecolor')) {
+            $this->markTestSkipped('GD is not available.');
+        }
+
+        Storage::fake('local');
+        Storage::fake('public');
+        $station = Station::factory()->create();
+        $draft = app(PhotoImporter::class)->import(
+            UploadedFile::fake()->image('draft.jpg', 900, 600),
+            ['station_id' => $station->id, 'license' => 'all_rights_reserved', 'publish_when_ready' => false]
+        );
+        app(PhotoProcessor::class)->process($draft);
+        $draft->refresh();
+
+        $this->assertSame(PhotoProcessingStatus::Ready, $draft->processing_status);
+        $this->assertFalse($draft->is_published);
+        $this->get(route('photos.show', $draft))->assertNotFound();
+
+        $failed = Photo::factory()->create([
+            'station_id' => $station->id,
+            'processing_status' => PhotoProcessingStatus::Pending,
+            'publish_when_ready' => true,
+            'is_published' => false,
+            'published_at' => null,
+            'original_path' => 'photos/originals/missing.jpg',
+        ]);
+        app(PhotoProcessor::class)->process($failed, true);
+
+        $this->assertSame(PhotoProcessingStatus::Failed, $failed->fresh()->processing_status);
+        $this->assertFalse($failed->fresh()->is_published);
+    }
+
+    public function test_import_rejects_invalid_mime_large_file_and_wrong_access(): void
+    {
+        Storage::fake('local');
+        $station = Station::factory()->create();
+        $otherStation = Station::factory()->create();
+        $access = StationAccess::query()->create(['external_id' => 'ACCESS:2', 'is_active' => true]);
+        $otherStation->accesses()->attach($access->id);
+
+        try {
+            app(PhotoImporter::class)->import(UploadedFile::fake()->create('vector.svg', 4, 'image/svg+xml'), [
+                'station_id' => $station->id,
+                'license' => 'all_rights_reserved',
+            ]);
+            $this->fail('Invalid SVG was accepted.');
+        } catch (ValidationException) {
+            $this->assertDatabaseCount('photos', 0);
+        }
+
+        config(['fotometro.photos.max_upload_mb' => 1]);
+
+        $this->expectException(ValidationException::class);
+        app(PhotoImporter::class)->import(UploadedFile::fake()->image('large.jpg')->size(2048), [
+            'station_id' => $station->id,
+            'station_access_id' => $access->id,
+            'license' => 'all_rights_reserved',
+        ]);
+    }
+
+    public function test_processor_generates_web_thumbnail_ready_and_retry_failed(): void
+    {
+        if (! function_exists('imagecreatetruecolor')) {
+            $this->markTestSkipped('GD is not available.');
+        }
+
+        Storage::fake('local');
+        Storage::fake('public');
+        config(['fotometro.photos.process_synchronously' => false]);
+
+        $station = Station::factory()->create();
+        $photo = app(PhotoImporter::class)->import(
+            UploadedFile::fake()->image('photo.jpg', 1600, 1000),
+            ['station_id' => $station->id, 'license' => 'all_rights_reserved', 'is_published' => true]
+        );
+
+        app(PhotoProcessor::class)->process($photo);
+        $photo->refresh();
+
+        $this->assertSame(PhotoProcessingStatus::Ready, $photo->processing_status);
+        $this->assertNotNull($photo->web_path);
+        $this->assertNotNull($photo->thumbnail_path);
+        Storage::disk('public')->assertExists($photo->web_path);
+        Storage::disk('public')->assertExists($photo->thumbnail_path);
+        $this->artisan('fotometro:process-photos --photo='.$photo->id.' --force')->assertExitCode(0);
+    }
+
+    public function test_public_photo_urls_use_app_url_and_never_original_path(): void
+    {
+        config([
+            'app.url' => 'https://fotometro.test',
+            'filesystems.disks.public.url' => 'https://fotometro.test/storage',
+        ]);
+        Storage::forgetDisk('public');
+
+        $photo = Photo::factory()->create([
+            'original_path' => 'photos/originals/private.jpg',
+            'web_path' => 'photos/web/public.jpg',
+            'thumbnail_path' => 'photos/thumbnails/thumb.jpg',
+        ]);
+
+        $this->assertSame('https://fotometro.test/storage/photos/web/public.jpg', $photo->web_url);
+        $this->assertSame('https://fotometro.test/storage/photos/thumbnails/thumb.jpg', $photo->thumbnail_url);
+        $this->assertStringNotContainsString('localhost', $photo->web_url);
+        $this->assertStringNotContainsString('originals/private.jpg', $photo->web_url);
+        $this->assertNull((new Photo(['web_path' => 'photos/originals/private.jpg']))->web_url);
+
+        config(['filesystems.disks.public.url' => 'http://localhost/storage']);
+        Storage::forgetDisk('public');
+        $this->assertSame('http://localhost/storage/photos/thumbnails/thumb.jpg', $photo->thumbnail_url);
+
+        config(['filesystems.disks.public.url' => 'http://127.0.0.1:8001/storage']);
+        Storage::forgetDisk('public');
+        $this->assertSame('http://127.0.0.1:8001/storage/photos/web/public.jpg', $photo->web_url);
+    }
+
+    public function test_processing_failure_marks_failed_and_cleans_partials(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $photo = Photo::factory()->create([
+            'processing_status' => PhotoProcessingStatus::Pending,
+            'original_path' => 'photos/originals/missing.jpg',
+            'web_path' => null,
+            'thumbnail_path' => null,
+        ]);
+
+        app(PhotoProcessor::class)->process($photo, true);
+
+        $this->assertSame(PhotoProcessingStatus::Failed, $photo->fresh()->processing_status);
+    }
+
+    public function test_admin_routes_are_protected_and_import_page_is_available(): void
+    {
+        $this->get('/admin/photos')->assertRedirect('/login');
+        $this->actingAs(User::factory()->create())
+            ->get(route('admin.photos.import'))
+            ->assertOk()
+            ->assertSee('Importer des photos');
+    }
+
+    public function test_admin_location_api_is_protected_and_filters_stations_and_accesses(): void
+    {
+        $line = Line::factory()->create(['code' => '1', 'sort_order' => 1]);
+        $otherLine = Line::factory()->create(['code' => '6', 'sort_order' => 6]);
+        $stationA = Station::factory()->create(['name' => 'Châtelet', 'latitude' => 48.858, 'longitude' => 2.347]);
+        $stationB = Station::factory()->create(['name' => 'Louvre', 'latitude' => 48.860, 'longitude' => 2.336]);
+        $stationOther = Station::factory()->create(['name' => 'Nation']);
+        $line->stations()->attach($stationB->id, ['position' => 2, 'branch' => 'main', 'is_terminus' => false]);
+        $line->stations()->attach($stationA->id, ['position' => 1, 'branch' => 'main', 'is_terminus' => true]);
+        $otherLine->stations()->attach($stationA->id, ['position' => 9]);
+        $otherLine->stations()->attach($stationOther->id, ['position' => 1]);
+
+        $access = StationAccess::query()->create([
+            'external_id' => 'ACCESS:CHATELET:1',
+            'name' => 'Accès Rivoli',
+            'reference' => '1',
+            'latitude' => 48.8581,
+            'longitude' => 2.3471,
+            'is_active' => true,
+            'source_payload' => ['secret' => true],
+        ]);
+        $otherAccess = StationAccess::query()->create(['external_id' => 'ACCESS:OTHER', 'name' => 'Autre accès', 'is_active' => true]);
+        $stationA->accesses()->attach($access->id);
+        $stationOther->accesses()->attach($otherAccess->id);
+
+        $this->get(route('admin.api.lines.stations', $line))->assertRedirect('/login');
+
+        $this->actingAs(User::factory()->create())
+            ->getJson(route('admin.api.lines.stations', $line))
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $stationA->id)
+            ->assertJsonPath('data.0.name', 'Châtelet')
+            ->assertJsonPath('data.0.position', 1)
+            ->assertJsonPath('data.0.lines.1.id', $otherLine->id)
+            ->assertJsonMissing(['source_payload' => ['secret' => true]])
+            ->assertJsonMissing(['id' => $stationOther->id]);
+
+        $this->actingAs(User::factory()->create())
+            ->getJson(route('admin.api.stations.accesses', $stationA))
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $access->id)
+            ->assertJsonPath('data.0.name', 'Accès Rivoli')
+            ->assertJsonMissing(['id' => $otherAccess->id])
+            ->assertJsonMissing(['source_payload' => ['secret' => true]]);
+    }
+
+    public function test_admin_photo_forms_use_line_station_access_filtering_with_edit_preselection(): void
+    {
+        $line = Line::factory()->create(['code' => '4']);
+        $station = Station::factory()->create(['name' => 'République']);
+        $access = StationAccess::query()->create(['external_id' => 'ACCESS:REP:1', 'name' => 'Accès Temple', 'is_active' => true]);
+        $line->stations()->attach($station->id, ['position' => 1]);
+        $station->accesses()->attach($access->id);
+        $photo = Photo::factory()->create(['station_id' => $station->id, 'station_access_id' => $access->id]);
+
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('admin.photos.import'))
+            ->assertOk()
+            ->assertSee('photo-line-id', false)
+            ->assertSee('photo-station-id', false)
+            ->assertSee('photo-station-access-id', false)
+            ->assertDontSee('<option value="'.$station->id.'">'.$station->name.'</option>', false);
+
+        $this->actingAs($user)
+            ->get(route('admin.photos.edit', $photo))
+            ->assertOk()
+            ->assertSee('initialLineId', false)
+            ->assertSee('initialStationId', false)
+            ->assertSee('initialAccessId', false)
+            ->assertSee((string) $line->id, false)
+            ->assertSee((string) $station->id, false)
+            ->assertSee((string) $access->id, false);
+    }
+
+    public function test_edit_refuses_access_from_another_station(): void
+    {
+        $station = Station::factory()->create();
+        $otherStation = Station::factory()->create();
+        $wrongAccess = StationAccess::query()->create(['external_id' => 'ACCESS:WRONG', 'name' => 'Mauvais accès', 'is_active' => true]);
+        $otherStation->accesses()->attach($wrongAccess->id);
+        $photo = Photo::factory()->create(['station_id' => $station->id, 'station_access_id' => null]);
+
+        $this->actingAs(User::factory()->create())
+            ->put(route('admin.photos.update', $photo), [
+                'station_id' => $station->id,
+                'station_access_id' => $wrongAccess->id,
+                'copyright_holder' => $photo->copyright_holder,
+                'copyright_notice' => $photo->copyright_notice,
+                'license' => $photo->license->value,
+            ])
+            ->assertSessionHasErrors('station_access_id');
+    }
+
+    public function test_manual_publish_unpublish_and_refuse_pending(): void
+    {
+        $user = User::factory()->create();
+        $ready = Photo::factory()->create(['is_published' => false, 'published_at' => null]);
+        $pending = Photo::factory()->create([
+            'processing_status' => PhotoProcessingStatus::Pending,
+            'is_published' => false,
+            'published_at' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('admin.photos.publish', $pending))
+            ->assertSessionHas('status', 'Cette photo ne peut pas être publiée avant la fin du traitement.');
+        $this->assertFalse($pending->fresh()->is_published);
+
+        $this->actingAs($user)->post(route('admin.photos.publish', $ready))->assertSessionHas('status', 'Photo publiée.');
+        $this->assertTrue($ready->fresh()->is_published);
+
+        $this->actingAs($user)->post(route('admin.photos.unpublish', $ready))->assertSessionHas('status', 'Photo dépubliée.');
+        $this->assertFalse($ready->fresh()->is_published);
+        $this->assertNull($ready->fresh()->published_at);
+    }
+
+    public function test_bulk_publish_and_manual_processing_limit(): void
+    {
+        $user = User::factory()->create();
+        $ready = Photo::factory()->count(2)->create(['is_published' => false, 'published_at' => null]);
+        $pending = Photo::factory()->create(['processing_status' => PhotoProcessingStatus::Pending, 'is_published' => false]);
+
+        $this->actingAs($user)->post(route('admin.photos.bulk'), [
+            'bulk_action' => 'publish',
+            'photo_ids' => [...$ready->pluck('id')->all(), $pending->id],
+        ])->assertSessionHas('status', '2 photo(s) traitée(s), 1 ignorée(s).');
+
+        $this->assertSame(2, Photo::query()->where('is_published', true)->count());
+
+        config(['fotometro.photos.manual_process_limit' => 1]);
+
+        $this->actingAs($user)->post(route('admin.photos.bulk'), [
+            'bulk_action' => 'process',
+            'photo_ids' => [$ready[0]->id, $ready[1]->id],
+        ])->assertSessionHas('status', 'Ce lot est trop important pour un traitement immédiat. Il sera traité progressivement.');
+    }
+
+    public function test_admin_store_uses_simplified_publish_mode(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $station = Station::factory()->create();
+
+        $this->actingAs(User::factory()->create())->post(route('admin.photos.store'), [
+            'station_id' => $station->id,
+            'license' => 'all_rights_reserved',
+            'publish_mode' => 'auto',
+            'files' => [
+                UploadedFile::fake()->image('one.jpg', 800, 600),
+                UploadedFile::fake()->image('two.jpg', 800, 600),
+            ],
+        ])->assertRedirect(route('admin.photos.index'))
+            ->assertSessionHas('status');
+
+        $this->assertDatabaseCount('photos', 2);
+        $this->assertTrue(Photo::query()->get()->every(fn (Photo $photo) => $photo->publish_when_ready));
+    }
+
+    public function test_public_visibility_station_gallery_photo_page_and_hidden_states(): void
+    {
+        $station = Station::factory()->create(['is_active' => true]);
+        $ready = Photo::factory()->create([
+            'station_id' => $station->id,
+            'title' => 'Quai central',
+            'processing_status' => PhotoProcessingStatus::Ready,
+            'is_published' => true,
+            'published_at' => now()->subMinute(),
+        ]);
+        Photo::factory()->create([
+            'station_id' => $station->id,
+            'title' => 'Brouillon',
+            'processing_status' => PhotoProcessingStatus::Ready,
+            'is_published' => false,
+        ]);
+        $pending = Photo::factory()->create([
+            'station_id' => $station->id,
+            'processing_status' => PhotoProcessingStatus::Pending,
+            'is_published' => true,
+        ]);
+
+        $this->get(route('stations.show', $station))
+            ->assertOk()
+            ->assertSee('Quai central')
+            ->assertDontSee('Brouillon');
+        $this->get(route('photos.show', $ready))->assertOk()->assertSee('Quai central')->assertSee($ready->copyright_notice);
+        $this->get(route('photos.show', $pending))->assertNotFound();
+        $this->assertStringNotContainsString('originals', $this->get(route('photos.show', $ready))->getContent());
+    }
+
+    public function test_delete_photo_removes_files_and_updates_coverage(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $station = Station::factory()->create(['coverage_status' => CoverageStatus::InProgress]);
+        $photo = Photo::factory()->create(['station_id' => $station->id]);
+        Storage::disk('local')->put($photo->original_path, 'original');
+        Storage::disk('public')->put($photo->web_path, 'web');
+        Storage::disk('public')->put($photo->thumbnail_path, 'thumb');
+
+        $this->actingAs(User::factory()->create())
+            ->delete(route('admin.photos.destroy', $photo))
+            ->assertRedirect(route('admin.photos.index'));
+
+        Storage::disk('local')->assertMissing($photo->original_path);
+        Storage::disk('public')->assertMissing($photo->web_path);
+        $this->assertDatabaseMissing('photos', ['id' => $photo->id]);
+        $this->assertSame(CoverageStatus::NotStarted, $station->fresh()->coverage_status);
+    }
+
+    public function test_coverage_rule_preserves_manual_planned_and_complete(): void
+    {
+        $planned = Station::factory()->create(['coverage_status' => CoverageStatus::Planned]);
+        $complete = Station::factory()->create(['coverage_status' => CoverageStatus::Complete]);
+        $normal = Station::factory()->create(['coverage_status' => CoverageStatus::NotStarted]);
+        Photo::factory()->count(5)->create(['station_id' => $normal->id]);
+
+        app(StationCoverageUpdater::class)->update($planned);
+        app(StationCoverageUpdater::class)->update($complete);
+        app(StationCoverageUpdater::class)->update($normal);
+
+        $this->assertSame(CoverageStatus::Planned, $planned->fresh()->coverage_status);
+        $this->assertSame(CoverageStatus::Complete, $complete->fresh()->coverage_status);
+        $this->assertSame(CoverageStatus::Documented, $normal->fresh()->coverage_status);
+    }
+
+    public function test_photo_category_seeder_updates_accented_names_without_changing_slugs(): void
+    {
+        PhotoCategory::query()->create([
+            'slug' => 'exterieur',
+            'name' => 'Exterieur',
+            'is_active' => true,
+        ]);
+
+        $this->seed(PhotoCategorySeeder::class);
+
+        $this->assertDatabaseHas('photo_categories', [
+            'slug' => 'exterieur',
+            'name' => 'Extérieur',
+        ]);
+        $this->assertDatabaseHas('photo_categories', [
+            'slug' => 'architecture-et-decoration-oeuvre-d-art',
+            'name' => 'Œuvre d’art',
+        ]);
+    }
+
+    public function test_shared_logo_component_is_visible_on_public_auth_and_admin_pages(): void
+    {
+        $station = Station::factory()->create();
+        $line = Line::factory()->create();
+        $line->stations()->attach($station->id, ['position' => 1]);
+        $photo = Photo::factory()->create(['station_id' => $station->id]);
+        $user = User::factory()->create();
+
+        $this->get(route('stations.show', $station))
+            ->assertOk()
+            ->assertSee('fotometro');
+
+        $this->get(route('lines.show', $line))
+            ->assertOk()
+            ->assertSee('fotometro');
+
+        $this->get(route('photos.show', $photo))
+            ->assertOk()
+            ->assertSee('fotometro');
+
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee('fotometro');
+
+        $this->actingAs($user)
+            ->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('Tableau de bord')
+            ->assertSee('Retour à la carte');
+    }
+}

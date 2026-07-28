@@ -117,3 +117,15 @@ Utiliser `--dry-run` avant toute synchronisation reelle, verifier le rapport, pu
 Le dataset `arrets-lignes` est telecharge via `/exports/csv?limit=-1` dans le repertoire temporaire configure par `FOTOMETRO_IDFM_TEMP_DIR`, puis supprime apres succes lorsque `APP_DEBUG=false`.
 
 Pendant un diagnostic local, `/debug/database` permet de comparer la connexion web avec la connexion CLI. Cette route retourne 404 hors local et doit etre retiree quand le diagnostic MySQL/cache est termine.
+
+# Catalogue photo
+
+Les originaux sont stockes hors webroot dans `storage/app/private/photos/originals`. Les versions web et miniatures sont stockees sous `storage/app/public/photos` et servies via le lien public Laravel habituel.
+
+Cron possible:
+
+```cron
+*/5 * * * * cd /home/COMPTE/apps/fotometro && php artisan fotometro:process-photos --limit=10
+```
+
+Verifier GD, `upload_max_filesize`, `post_max_size`, `memory_limit` et les droits d'ecriture sur `storage`.

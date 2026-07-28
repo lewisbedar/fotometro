@@ -64,7 +64,34 @@
 
                 <div class="rounded-lg bg-white p-5 shadow-sm ring-1 ring-black/5">
                     <h2 class="text-xl font-semibold">Galerie</h2>
-                    <p class="mt-3 text-black/65">Aucune photographie publiée pour cette station.</p>
+                    <p class="mt-2 text-sm text-black/60">{{ $photos->count() }} photo(s) publiée(s)</p>
+                    @if ($photoCategories->isNotEmpty())
+                        <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                            @foreach ($photoCategories as $category)
+                                <span class="rounded-full bg-black/5 px-2 py-1">{{ $category->name }}</span>
+                            @endforeach
+                        </div>
+                    @endif
+                    @if ($photoAccesses->isNotEmpty())
+                        <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                            @foreach ($photoAccesses as $access)
+                                <span class="rounded-full bg-white px-2 py-1 ring-1 ring-black/10">{{ $access->name ?: $access->reference }}</span>
+                            @endforeach
+                        </div>
+                    @endif
+                    <div class="mt-4 grid grid-cols-2 gap-3">
+                        @forelse ($photos as $photo)
+                            <a href="{{ route('photos.show', $photo) }}" class="group block overflow-hidden rounded-md bg-black/5">
+                                @if ($photo->thumbnail_url)
+                                    <img src="{{ $photo->thumbnail_url }}" alt="{{ $photo->title ?: $photo->original_filename }}" class="h-32 w-full object-cover transition group-hover:scale-105">
+                                @endif
+                                <span class="block p-2 text-xs font-medium">{{ $photo->title ?: $photo->category?->name ?: 'Photo' }}</span>
+                            </a>
+                        @empty
+                            <p class="col-span-2 text-black/65">Aucune photographie publiée pour cette station.</p>
+                        @endforelse
+                    </div>
+                    <p class="mt-4 text-xs leading-5 text-black/55">Les photographies présentées sur fotometro sont protégées par le droit d’auteur. Toute reproduction ou réutilisation est soumise aux conditions indiquées sur chaque photographie.</p>
                 </div>
             </aside>
         </section>

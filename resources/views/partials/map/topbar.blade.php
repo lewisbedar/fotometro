@@ -1,14 +1,6 @@
 <header class="fullscreen-map-topbar" aria-label="Navigation cartographique">
-    <button type="button" class="map-glass map-logo-block" x-on:click="resetExplorer()" aria-label="Reinitialiser la carte">
-        @if ($logoExists)
-            <img src="{{ asset('images/logo_fotometro.png') }}" alt="fotometro" class="h-10 max-w-[240px] object-contain">
-        @else
-            <span class="grid h-10 w-10 place-items-center rounded-full bg-[#12326b] text-lg font-bold text-white">fm</span>
-            <span>
-                <span class="block text-2xl font-semibold leading-6">fotometro</span>
-                <span class="block text-xs text-black/60">Photographier le metro parisien</span>
-            </span>
-        @endif
+    <button type="button" class="map-glass map-logo-block" x-on:click="resetExplorer()" aria-label="Réinitialiser la carte">
+        <x-fotometro-logo :href="null" />
     </button>
 
     <div class="map-glass map-search-block">
@@ -36,7 +28,7 @@
 
         <div id="station-search-results" class="map-search-results" x-show="searchQuery.length >= 2 && activePanel === 'search'" x-cloak>
             <template x-if="searchResults.length === 0 && ! searchLoading">
-                <p class="p-3 text-sm text-black/60">Aucune station trouvee.</p>
+                <p class="p-3 text-sm text-black/60">Aucune station trouvée.</p>
             </template>
             <template x-for="(station, index) in searchResults" :key="station.id">
                 <button
@@ -47,7 +39,7 @@
                 >
                     <span>
                         <span class="block font-medium" x-text="station.name"></span>
-                        <span class="block text-xs text-black/55" x-text="station.district || station.city || 'Localisation a completer'"></span>
+                        <span class="block text-xs text-black/55" x-text="station.district || station.city || 'Localisation à compléter'"></span>
                     </span>
                     <span class="flex shrink-0 gap-1">
                         <template x-for="line in normalizeLines(station.lines)" :key="line.id">

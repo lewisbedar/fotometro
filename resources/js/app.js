@@ -948,6 +948,295 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
     };
 };
 
+function buildAdminMapConfig(input = {}) {
+    const basemapDriver = normalizeBasemapDriver(input.basemapDriver || 'raster');
+    const maxZoom = input.maxZoom !== null && input.maxZoom !== undefined && input.maxZoom !== ''
+        ? Number(input.maxZoom)
+        : 19;
+
+    return {
+        basemapDriver,
+        styleUrl: input.styleUrl || '',
+        rasterUrl: input.rasterUrl || '',
+        rasterTileSize: Number(input.rasterTileSize || 256),
+        attribution: input.attribution || '',
+        centerLongitude: Number(input.centerLongitude || 2.3522),
+        centerLatitude: Number(input.centerLatitude || 48.8566),
+        zoom: Number(input.zoom || 11.5),
+        maxZoom,
+        hasBasemapConfig: basemapDriver === 'raster' ? Boolean(input.rasterUrl) : Boolean(input.styleUrl),
+    };
+}
+
+window.fotometroPhotoForm = function fotometroPhotoForm(options) {
+    return {
+        lineId: options.initialLineId ? String(options.initialLineId) : '',
+        stationId: options.initialStationId ? String(options.initialStationId) : '',
+        accessId: options.initialAccessId ? String(options.initialAccessId) : '',
+        stations: [],
+        accesses: [],
+        loadingStations: false,
+        loadingAccesses: false,
+        map: null,
+        maplibregl: null,
+        markers: [],
+        mapStatus: 'Sélectionnez une station.',
+        mapConfig: buildAdminMapConfig(options.mapConfig || {}),
+        lineStationsUrl: options.lineStationsUrl,
+        stationAccessesUrl: options.stationAccessesUrl,
+
+        async init() {
+            if (this.lineId) {
+                await this.loadStations(true);
+            }
+
+            if (this.stationId) {
+                await this.loadAccesses(true);
+                await this.refreshMap();
+            }
+        },
+
+        async lineChanged() {
+            this.stationId = '';
+            this.accessId = '';
+            this.stations = [];
+            this.accesses = [];
+            this.clearMarkers();
+            this.mapStatus = this.lineId ? 'Chargement des stations...' : 'Sélectionnez une station.';
+
+            if (this.lineId) {
+                await this.loadStations(false);
+            }
+        },
+
+        async stationChanged() {
+            this.accessId = '';
+            this.accesses = [];
+            await this.loadAccesses(false);
+            await this.refreshMap();
+        },
+
+        accessChanged() {
+            this.refreshMap();
+        },
+
+        async loadStations(keepSelection) {
+            this.loadingStations = true;
+
+            try {
+                const response = await fetch(this.lineStationsUrl.replace('__LINE__', encodeURIComponent(this.lineId)), {
+                    headers: { Accept: 'application/json' },
+                });
+
+                if (! response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const payload = await response.json();
+                this.stations = Array.isArray(payload.data) ? payload.data : [];
+
+                if (! keepSelection || ! this.stations.some((station) => String(station.id) === String(this.stationId))) {
+                    this.stationId = '';
+                    this.accessId = '';
+                    this.accesses = [];
+                }
+
+                this.mapStatus = this.stationId ? 'Station sélectionnée.' : 'Sélectionnez une station.';
+            } catch (error) {
+                this.mapStatus = 'Impossible de charger les stations.';
+                console.error('[fotometro] admin station loading failed', error);
+            } finally {
+                this.loadingStations = false;
+            }
+        },
+
+        async loadAccesses(keepSelection) {
+            if (! this.stationId) {
+                this.accesses = [];
+                return;
+            }
+
+            this.loadingAccesses = true;
+
+            try {
+                const response = await fetch(this.stationAccessesUrl.replace('__STATION__', encodeURIComponent(this.stationId)), {
+                    headers: { Accept: 'application/json' },
+                });
+
+                if (! response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const payload = await response.json();
+                this.accesses = Array.isArray(payload.data) ? payload.data : [];
+
+                if (! keepSelection || ! this.accesses.some((access) => String(access.id) === String(this.accessId))) {
+                    this.accessId = '';
+                }
+            } catch (error) {
+                this.accesses = [];
+                this.mapStatus = 'Impossible de charger les accès.';
+                console.error('[fotometro] admin access loading failed', error);
+            } finally {
+                this.loadingAccesses = false;
+            }
+        },
+
+        async ensureMap() {
+            if (! this.$refs.map) {
+                return false;
+            }
+
+            if (! this.mapConfig.hasBasemapConfig) {
+                this.$refs.map.innerHTML = `<div class="grid h-full place-items-center p-6 text-center text-sm text-black/60">${basemapConfigurationMessage(this.mapConfig)}</div>`;
+                return false;
+            }
+
+            this.maplibregl ??= await loadMapLibre();
+
+            if (this.map) {
+                return true;
+            }
+
+            try {
+                this.map = new this.maplibregl.Map({
+                    container: this.$refs.map,
+                    style: resolveMapStyle(this.mapConfig),
+                    center: [this.mapConfig.centerLongitude, this.mapConfig.centerLatitude],
+                    zoom: Math.min(13, this.mapConfig.maxZoom),
+                    maxZoom: this.mapConfig.maxZoom,
+                    attributionControl: false,
+                });
+
+                this.map.addControl(new this.maplibregl.NavigationControl({ visualizePitch: false }), 'top-right');
+
+                if (this.mapConfig.attribution) {
+                    this.map.addControl(new this.maplibregl.AttributionControl({
+                        customAttribution: this.mapConfig.attribution,
+                        compact: true,
+                    }));
+                }
+
+                this.map.on('load', () => {
+                    this.map.resize();
+                });
+
+                return true;
+            } catch (error) {
+                this.mapStatus = `Erreur MapLibre : ${error.message || error}`;
+                console.error('[fotometro] admin map initialization failed', error);
+                return false;
+            }
+        },
+
+        async refreshMap() {
+            const station = this.selectedStation();
+
+            if (! station) {
+                this.mapStatus = 'Sélectionnez une station.';
+                return;
+            }
+
+            if (! await this.ensureMap()) {
+                return;
+            }
+
+            this.clearMarkers();
+
+            const coordinates = [];
+            const stationCoordinate = this.coordinateFor(station);
+
+            if (stationCoordinate) {
+                coordinates.push(stationCoordinate);
+                this.addMarker(stationCoordinate, station.name, 'station', false, null);
+            }
+
+            let geolocatedAccessCount = 0;
+
+            this.accesses.forEach((access) => {
+                const coordinate = this.coordinateFor(access);
+
+                if (coordinate) {
+                    geolocatedAccessCount++;
+                    coordinates.push(coordinate);
+                    this.addMarker(coordinate, access.name, 'access', String(access.id) === String(this.accessId), access.id);
+                }
+            });
+
+            if (coordinates.length === 0) {
+                this.mapStatus = 'Aucune coordonnée disponible pour cette sélection.';
+                return;
+            }
+
+            if (coordinates.length === 1) {
+                this.map.flyTo({ center: coordinates[0], zoom: Math.min(15, this.mapConfig.maxZoom), duration: 200 });
+            } else {
+                const bounds = coordinates.reduce(
+                    (result, coordinate) => result.extend(coordinate),
+                    new this.maplibregl.LngLatBounds(coordinates[0], coordinates[0]),
+                );
+
+                this.map.fitBounds(bounds, { padding: 64, maxZoom: Math.min(16, this.mapConfig.maxZoom), duration: 200 });
+            }
+
+            this.map.resize();
+            this.mapStatus = geolocatedAccessCount > 0
+                ? `${geolocatedAccessCount} accès géolocalisé(s).`
+                : 'Aucun accès géolocalisé pour cette station.';
+        },
+
+        addMarker(coordinate, label, type, selected, id) {
+            const marker = document.createElement('button');
+            marker.type = 'button';
+            marker.className = type === 'station'
+                ? 'h-5 w-5 rounded-full border-2 border-white bg-black shadow'
+                : 'h-4 w-4 rounded-full border-2 border-white bg-blue-700 shadow';
+            marker.classList.toggle('ring-4', selected);
+            marker.classList.toggle('ring-blue-300', selected);
+            marker.setAttribute('aria-label', label || 'Repère');
+
+            const mapMarker = new this.maplibregl.Marker({ element: marker })
+                .setLngLat(coordinate)
+                .addTo(this.map);
+
+            if (type === 'access') {
+                marker.addEventListener('click', () => {
+                    this.accessId = id ? String(id) : this.accessId;
+                    this.refreshMap();
+                });
+            }
+
+            this.markers.push(mapMarker);
+        },
+
+        clearMarkers() {
+            this.markers.forEach((marker) => marker.remove());
+            this.markers = [];
+        },
+
+        selectedStation() {
+            return this.stations.find((station) => String(station.id) === String(this.stationId)) || null;
+        },
+
+        coordinateFor(item) {
+            const longitude = Number(item.longitude);
+            const latitude = Number(item.latitude);
+
+            if (! Number.isFinite(longitude) || ! Number.isFinite(latitude)) {
+                return null;
+            }
+
+            return [longitude, latitude];
+        },
+
+        destroy() {
+            this.clearMarkers();
+            this.map?.remove();
+            this.map = null;
+        },
+    };
+};
+
 async function initStaticMaps() {
     const elements = document.querySelectorAll('.fotometro-static-map');
 
