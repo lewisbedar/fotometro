@@ -164,6 +164,7 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
         searchRequestSequence: 0,
         searchRequestController: null,
         isAboutOpen: false,
+        isBetaNoticeOpen: false,
         mapFatalError: null,
         mapWarnings: [],
         mapHasLoaded: false,
@@ -172,6 +173,8 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
         lineLayerDiagnostics: null,
 
         async init() {
+            this.isBetaNoticeOpen = ! this.hasSeenBetaNotice();
+
             try {
                 await this.loadMapData();
 
@@ -1309,6 +1312,11 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
         },
 
         handleEscape() {
+            if (this.isBetaNoticeOpen) {
+                this.closeBetaNotice();
+                return;
+            }
+
             if (this.isAboutOpen) {
                 this.closeAbout();
                 return;
@@ -1353,6 +1361,25 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
             this.isAboutOpen = false;
             if (this.activePanel === 'about') {
                 this.activePanel = null;
+            }
+        },
+
+        hasSeenBetaNotice() {
+            try {
+                return window.localStorage.getItem('fotometro-beta-notice-dismissed') === '1';
+            } catch (error) {
+                return false;
+            }
+        },
+
+        closeBetaNotice() {
+            this.isBetaNoticeOpen = false;
+
+            try {
+                window.localStorage.setItem('fotometro-beta-notice-dismissed', '1');
+            } catch (error) {
+                // Ignore storage errors (private browsing, quota, etc.) — the
+                // notice will just reappear next visit in that case.
             }
         },
 

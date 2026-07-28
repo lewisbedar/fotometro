@@ -12,6 +12,12 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ $title }}</title>
+        @if (file_exists(public_path('images/favicon.png')))
+            <link rel="icon" type="image/png" href="{{ asset('images/favicon.png') }}">
+        @endif
+        @if (file_exists(public_path('images/favicon-touch.png')))
+            <link rel="apple-touch-icon" href="{{ asset('images/favicon-touch.png') }}">
+        @endif
         @if ($description)
             <meta name="description" content="{{ $description }}">
         @endif
