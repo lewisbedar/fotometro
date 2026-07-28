@@ -15,8 +15,8 @@
         </div>
 
         <div class="mt-5 space-y-4 text-sm leading-6 text-black/70">
-            <p>fotometro est un projet photographique consacré aux stations du métro parisien. Il permet d’explorer le réseau, de découvrir les stations et de documenter leurs quais, accès, architecture, signalétique et détails.</p>
-            <p>Les photographies présentées sur fotometro sont protégées par le droit d’auteur. Toute reproduction ou réutilisation est soumise aux conditions indiquées sur chaque photographie.</p>
+            <p>fotométro est un projet photographique consacré aux stations du métro parisien. Il permet d’explorer le réseau, de découvrir les stations et de documenter leurs quais, accès, architecture, signalétique et détails.</p>
+            <p>Les photographies présentées sur fotométro sont protégées par le droit d’auteur. Toute reproduction ou réutilisation est soumise aux conditions indiquées sur chaque photographie.</p>
 
             <div class="grid gap-3 sm:grid-cols-2">
                 <section class="rounded-md bg-white/70 p-3 ring-1 ring-black/10">

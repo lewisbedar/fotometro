@@ -1,4 +1,4 @@
-<x-layouts.app title="Importer des photos - fotometro">
+<x-layouts.app title="Importer des photos - fotométro">
     <form method="POST" action="{{ route('admin.photos.store') }}" enctype="multipart/form-data" class="mx-auto max-w-3xl space-y-5 rounded-lg bg-white p-6 shadow-sm ring-1 ring-black/5">
         @csrf
         <h1 class="text-2xl font-semibold">Importer des photos</h1>

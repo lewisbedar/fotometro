@@ -32,7 +32,7 @@ class PublicLineController extends Controller
                     'status_color' => $station->coverage_status->color(),
                 ])
                 ->values(),
-            'metaDescription' => "Stations et progression photographique de {$line->name} sur fotometro.",
+            'metaDescription' => "Stations et progression photographique de {$line->name} sur fotométro.",
         ]);
     }
 }

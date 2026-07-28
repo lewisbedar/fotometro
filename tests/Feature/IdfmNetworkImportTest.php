@@ -90,8 +90,30 @@ class IdfmNetworkImportTest extends TestCase
         $access = StationAccess::query()->where('external_id', 'IDFM:ACCESS:1')->firstOrFail();
 
         $this->assertSame('Sortie 1', $access->name);
+        $this->assertSame('1', $access->number);
         $this->assertTrue($access->wheelchair_accessible);
         $this->assertSame(['Chatelet', 'Nation'], $access->stations->pluck('name')->sort()->values()->all());
+    }
+
+    public function test_access_import_captures_number_from_raw_idfm_accshortname_field(): void
+    {
+        // Real IDFM CSV exports use raw column names like 'accshortname', not the
+        // friendlier aliases used by the other fixtures in this file. 'accshortname'
+        // is the official exit number (e.g. "3") and must land in `number`, distinct
+        // from `accname` (the descriptive street label) landing in `name`.
+        app(\App\Services\Idfm\AccessImporter::class)->import([
+            [
+                'accid' => 'IDFM:ACCESS:RAW:1',
+                'accname' => "r. de l'Église",
+                'accshortname' => '3',
+                'accgeopoint' => '48.8842, 2.2617',
+            ],
+        ]);
+
+        $access = StationAccess::query()->where('external_id', 'IDFM:ACCESS:RAW:1')->firstOrFail();
+
+        $this->assertSame("r. de l'Église", $access->name);
+        $this->assertSame('3', $access->number);
     }
 
     public function test_dry_run_reports_changes_without_committing(): void
@@ -465,6 +487,7 @@ class IdfmNetworkImportTest extends TestCase
                     'access_id' => 'IDFM:ACCESS:1',
                     'name' => 'Sortie 1',
                     'reference' => '1',
+                    'number' => '1',
                     'lat' => 48.8587,
                     'lon' => 2.3471,
                     'type' => 'stairs',

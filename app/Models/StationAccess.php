@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'external_id',
     'name',
     'reference',
+    'number',
     'latitude',
     'longitude',
     'access_type',

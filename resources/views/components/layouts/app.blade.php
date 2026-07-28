@@ -1,8 +1,8 @@
 @props([
-    'title' => 'fotometro',
+    'title' => 'fotométro',
     'description' => null,
     'canonical' => null,
-    'fullWidth' => false,
+    'fullWidth' => true,
     'fullscreen' => false,
 ])
 

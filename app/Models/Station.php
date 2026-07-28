@@ -7,6 +7,7 @@ use Database\Factories\StationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'opening_date',
     'description',
     'coverage_status',
+    'coverage_percentage',
+    'cover_photo_id',
     'is_active',
     'source',
     'source_payload',
@@ -78,5 +81,10 @@ class Station extends Model
     public function photos(): HasMany
     {
         return $this->hasMany(Photo::class);
+    }
+
+    public function coverPhoto(): BelongsTo
+    {
+        return $this->belongsTo(Photo::class, 'cover_photo_id');
     }
 }

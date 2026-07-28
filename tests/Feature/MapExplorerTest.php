@@ -328,19 +328,37 @@ class MapExplorerTest extends TestCase
     {
         $this->seed(LineStationSeeder::class);
 
-        $expected = [
+        $staticMapAttributes = [
             'data-basemap-driver="raster"',
             'data-raster-url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"',
             'data-raster-tile-size="256"',
             'data-map-max-zoom="19"',
         ];
 
-        foreach (['/', '/stations/chatelet', '/lignes/ligne-1'] as $uri) {
+        foreach (['/', '/lignes/ligne-1'] as $uri) {
             $response = $this->get($uri)->assertOk();
 
-            foreach ($expected as $html) {
+            foreach ($staticMapAttributes as $html) {
                 $response->assertSee($html, false);
             }
+        }
+
+        // The station page has no standalone static map (merged into the
+        // accesses map), so its raster config only appears in the Alpine
+        // component's JSON payload. Js::from() escapes quotes as "
+        // (built here via chr(92) to dodge string-escaping gymnastics) for
+        // safe embedding in a double-quoted HTML attribute; normalize that
+        // back to plain quotes before matching.
+        $unicodeQuote = chr(92).'u0022';
+        $content = str_replace($unicodeQuote, '"', $this->get('/stations/chatelet')->assertOk()->getContent());
+
+        foreach ([
+            '"basemapDriver":"raster"',
+            '"rasterUrl":"https:',
+            '"rasterTileSize":256',
+            '"maxZoom":19',
+        ] as $json) {
+            $this->assertStringContainsString($json, $content);
         }
     }
 

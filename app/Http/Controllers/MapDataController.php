@@ -36,7 +36,10 @@ class MapDataController extends Controller
                 ->where('is_active', true)
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
-                ->with(['lines' => fn ($query) => $query->where('is_active', true)->withCount('stations')->orderBy('sort_order')])
+                ->with([
+                    'lines' => fn ($query) => $query->where('is_active', true)->withCount('stations')->orderBy('sort_order'),
+                    'coverPhoto',
+                ])
                 ->withCount('accesses')
                 ->orderBy('name')
                 ->get();

@@ -65,44 +65,60 @@
     }
 
     /* Station popup: matches the map-glass panels instead of MapLibre's
-       plain default card, so it doesn't look like a foreign element. */
-    .maplibregl-popup-content {
+       plain default card, so it doesn't look like a foreign element.
+       Selectors are scoped under .maplibregl-popup (not just
+       .maplibregl-popup-content) to reliably outrank maplibre-gl.css, which
+       is bundled/loaded after this file and would otherwise win ties on
+       padding/border-radius/background regardless of declaration order here. */
+    .maplibregl-popup .maplibregl-popup-content {
         width: 15.5rem;
-        background: rgba(255, 255, 255, 0.94);
+        background: rgba(255, 255, 255, 0.94) !important;
         border: 1px solid rgba(0, 0, 0, 0.08);
-        border-radius: 1rem;
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.16);
-        padding: 1rem;
+        border-radius: 1rem !important;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.16) !important;
+        padding: 1rem !important;
         font-family: var(--font-sans);
     }
 
     @supports (backdrop-filter: blur(12px)) {
-        .maplibregl-popup-content {
+        .maplibregl-popup .maplibregl-popup-content {
             backdrop-filter: blur(12px);
         }
     }
 
-    .maplibregl-popup-close-button {
+    .maplibregl-popup .maplibregl-popup-close-button {
         top: 0.625rem;
         right: 0.625rem;
         width: 1.75rem;
         height: 1.75rem;
         display: grid;
         place-items: center;
-        border-radius: 999px;
-        background: rgba(0, 0, 0, 0.06);
-        color: rgba(0, 0, 0, 0.6);
+        border-radius: 999px !important;
+        background: #fff !important;
+        color: rgba(0, 0, 0, 0.7);
         font-size: 1.1rem;
         line-height: 1;
-        transition: background 120ms ease;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        transition: transform 120ms ease, color 120ms ease;
     }
 
-    .maplibregl-popup-close-button:hover {
-        background: rgba(0, 0, 0, 0.12);
+    .maplibregl-popup .maplibregl-popup-close-button:hover {
+        color: #000;
+        transform: scale(1.08);
     }
 
     .station-popup-title {
         padding-right: 1.5rem;
+    }
+
+    .station-popup-cover {
+        display: block;
+        width: calc(100% + 2rem);
+        max-width: calc(100% + 2rem);
+        height: 7rem;
+        object-fit: cover;
+        margin: -1rem -1rem 0.75rem;
+        border-radius: 1rem 1rem 0 0;
     }
 
     .station-popup-status {
@@ -809,12 +825,6 @@
         gap: 0.4rem;
     }
 
-    .maplibregl-popup-content {
-        border-radius: 0.5rem;
-        box-shadow: 0 12px 30px rgb(0 0 0 / 0.16);
-        padding: 0.875rem;
-    }
-
     .maplibregl-ctrl-attrib {
         font-size: 0.6875rem;
     }
@@ -886,5 +896,232 @@
         .maplibregl-ctrl-top-right {
             top: 5rem;
         }
+    }
+
+    /* Photo lightbox: full-screen overlay opened from mosaic/gallery photo
+       links (data-lightbox attributes), shows the image plus description and
+       copyright without leaving the station page. */
+    .lightbox-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background: rgba(10, 10, 10, 0.85);
+    }
+
+    .lightbox-panel {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 64rem;
+        max-height: 90vh;
+        overflow: hidden;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.45);
+    }
+
+    .lightbox-body {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        flex: 1;
+    }
+
+    @media (min-width: 768px) {
+        .lightbox-body {
+            flex-direction: row;
+        }
+    }
+
+    .lightbox-close {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        z-index: 1;
+        display: grid;
+        height: 2.25rem;
+        width: 2.25rem;
+        place-items: center;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        font-size: 1.25rem;
+        line-height: 1;
+        transition: background 120ms ease;
+    }
+
+    .lightbox-close:hover {
+        background: rgba(0, 0, 0, 0.75);
+    }
+
+    .lightbox-nav {
+        position: absolute;
+        top: 50%;
+        z-index: 1;
+        display: grid;
+        height: 2.75rem;
+        width: 2.75rem;
+        place-items: center;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        font-size: 1.75rem;
+        line-height: 1;
+        transform: translateY(-50%);
+        transition: background 120ms ease;
+    }
+
+    .lightbox-nav:hover {
+        background: rgba(0, 0, 0, 0.75);
+    }
+
+    .lightbox-nav-prev {
+        left: 0.75rem;
+    }
+
+    .lightbox-nav-next {
+        right: 0.75rem;
+    }
+
+    .lightbox-position {
+        margin-top: 0.75rem;
+        font-size: 0.75rem;
+        color: rgba(0, 0, 0, 0.45);
+    }
+
+    .lightbox-image-wrap {
+        display: flex;
+        flex: 1 1 60%;
+        min-height: 16rem;
+        align-items: center;
+        justify-content: center;
+        background: #111;
+    }
+
+    .lightbox-image {
+        max-width: 100%;
+        max-height: 50vh;
+        object-fit: contain;
+    }
+
+    @media (min-width: 768px) {
+        .lightbox-image {
+            max-height: 90vh;
+        }
+    }
+
+    .lightbox-info {
+        flex: 1 1 40%;
+        overflow-y: auto;
+        padding: 1.5rem;
+    }
+
+    .lightbox-info h3 {
+        padding-right: 1.5rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .lightbox-meta {
+        margin-top: 0.25rem;
+        font-size: 0.875rem;
+        color: rgba(0, 0, 0, 0.55);
+    }
+
+    .lightbox-rights {
+        margin-top: 1rem;
+        display: grid;
+        gap: 0.5rem;
+        font-size: 0.8125rem;
+    }
+
+    .lightbox-rights dt {
+        color: rgba(0, 0, 0, 0.5);
+    }
+
+    .lightbox-full-link {
+        margin-top: 1.25rem;
+        display: inline-flex;
+        min-height: 2.25rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.5rem;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        padding: 0 1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        transition: background 120ms ease, color 120ms ease;
+    }
+
+    .lightbox-full-link:hover {
+        background: #000;
+        color: #fff;
+    }
+
+    /* RATP-style tiled station name sign: green ceramic frame, blue plate,
+       white inset stripes, blocky uppercase lettering. Colors are fixed
+       (not theme-aware) since this represents a real physical sign. */
+    .ratp-sign-frame {
+        display: inline-block;
+        max-width: 100%;
+        background-color: #1c6b45;
+        background-image:
+            repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 22px),
+            repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 22px);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12);
+    }
+
+    .ratp-sign-plate {
+        position: relative;
+        display: block;
+        background-color: #2c3a84;
+        background-image:
+            repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.1) 0 1px, transparent 1px 22px),
+            repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0 1px, transparent 1px 22px);
+        border-radius: 0.15rem;
+        padding: 1.6rem 2rem;
+    }
+
+    .access-number-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.375rem;
+        height: 1.375rem;
+        padding: 0 0.3rem;
+        border-radius: 999px;
+        background: #1d4ed8;
+        color: #fff;
+        font-size: 0.75rem;
+        font-weight: 700;
+        line-height: 1;
+        flex: none;
+    }
+
+    .ratp-sign-border {
+        position: absolute;
+        inset: 0.55rem 0.5rem;
+        border: 3px solid #f5f5f0;
+        pointer-events: none;
+    }
+
+    .ratp-sign-text {
+        margin: 0;
+        color: #f5f5f0;
+        font-family: 'Arial Black', 'Franklin Gothic Heavy', 'Segoe UI', ui-sans-serif, sans-serif;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+        font-size: clamp(1.5rem, 4.5vw, 2.75rem);
+        line-height: 1;
+        text-align: center;
+        white-space: normal;
     }
 }

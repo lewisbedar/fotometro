@@ -30,6 +30,7 @@ class AccessImporter
                 'external_id' => $externalId,
                 'name' => $this->value($record, ['name', 'access_name', 'nom', 'accname', 'accshortname']),
                 'reference' => $this->value($record, ['reference', 'ref', 'accprivatecode']),
+                'number' => $this->value($record, ['number', 'access_number', 'accshortname']),
                 'latitude' => $this->latitude($record),
                 'longitude' => $this->longitude($record),
                 'access_type' => $this->value($record, ['access_type', 'type']),

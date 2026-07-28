@@ -35,6 +35,10 @@ class PhotoPublicationService
             'published_at' => null,
         ])->save();
 
+        if ($photo->station->cover_photo_id === $photo->id) {
+            $photo->station->forceFill(['cover_photo_id' => null])->save();
+        }
+
         $this->afterVisibilityChange($photo);
     }
 

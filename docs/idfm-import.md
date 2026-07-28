@@ -68,7 +68,9 @@ php artisan fotometro:import-network --force
 
 `stations` conserve ses champs editoriaux et ajoute `source`, `source_payload` et `source_updated_at`.
 
-`station_accesses` stocke les acces et sorties: identifiant externe, nom, reference, coordonnees, type, rue, description, accessibilite PMR, statut actif et metadonnees source.
+`station_accesses` stocke les acces et sorties: identifiant externe, nom, reference, numero de sortie officiel, coordonnees, type, rue, description, accessibilite PMR, statut actif et metadonnees source.
+
+Le numero de sortie officiel vient du champ IDFM `accshortname` (ex: "3"), distinct de `accname` (le libelle descriptif type "r. de l'Eglise") qui alimente `name`. Environ 40% des acces n'ont pas de numero dans les donnees source; `number` reste alors `null`.
 
 `access_station` relie un acces a une ou plusieurs stations.
 

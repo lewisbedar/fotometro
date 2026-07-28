@@ -19,11 +19,11 @@
     <span {{ $attributes->merge(['class' => $baseClass]) }}>
 @endif
         @if ($logoExists)
-            <img src="{{ asset('images/logo_fotometro.png') }}" alt="fotometro" @class([$heightClass, 'w-auto max-w-[240px] object-contain'])>
+            <img src="{{ asset('images/logo_fotometro.png') }}" alt="fotométro" @class([$heightClass, 'w-auto max-w-[240px] object-contain'])>
         @else
             <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#12326b] text-sm font-bold text-white">fm</span>
             <span>
-                <span class="block text-xl font-semibold leading-6">fotometro</span>
+                <span class="block text-xl font-semibold leading-6">fotométro</span>
                 <span class="block text-xs text-black/60">Photographier le métro parisien</span>
             </span>
         @endif

@@ -1,6 +1,6 @@
 <x-layouts.app
-    title="fotometro - Carte photographique du metro parisien"
-    description="Explorez les stations du metro parisien et leur progression photographique sur fotometro."
+    title="fotométro - Carte photographique du metro parisien"
+    description="Explorez les stations du metro parisien et leur progression photographique sur fotométro."
     :canonical="route('home')"
     :full-width="true"
     :fullscreen="true"

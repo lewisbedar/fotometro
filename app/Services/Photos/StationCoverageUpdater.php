@@ -7,19 +7,24 @@ use App\Models\Station;
 
 class StationCoverageUpdater
 {
+    public function __construct(private readonly StationPhotoCoverageService $coverage)
+    {
+    }
+
     public function update(Station $station): void
     {
-        if (in_array($station->coverage_status, [CoverageStatus::Planned, CoverageStatus::Complete], true)) {
-            return;
+        $essential = $this->coverage->essentialCoverage($station);
+
+        $attributes = ['coverage_percentage' => $essential['percentage']];
+
+        if (! in_array($station->coverage_status, [CoverageStatus::Planned, CoverageStatus::Complete], true)) {
+            $attributes['coverage_status'] = match (true) {
+                $essential['percentage'] === 0 => CoverageStatus::NotStarted,
+                $essential['complete'] => CoverageStatus::Documented,
+                default => CoverageStatus::InProgress,
+            };
         }
 
-        $count = $station->photos()->publiclyVisible()->count();
-        $status = match (true) {
-            $count === 0 => CoverageStatus::NotStarted,
-            $count >= 5 => CoverageStatus::Documented,
-            default => CoverageStatus::InProgress,
-        };
-
-        $station->forceFill(['coverage_status' => $status])->save();
+        $station->forceFill($attributes)->save();
     }
 }

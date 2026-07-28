@@ -75,6 +75,13 @@ class Photo extends Model
         ];
     }
 
+    public function publicLabel(): string
+    {
+        return $this->title
+            ?: $this->category?->name
+            ?: 'Photographie de '.$this->station?->name;
+    }
+
     public function adminStatusLabel(): string
     {
         return match (true) {

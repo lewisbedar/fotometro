@@ -1,4 +1,4 @@
-<x-layouts.app title="Photos - fotometro" :full-width="true">
+<x-layouts.app title="Photos - fotométro" :full-width="true">
     <div class="space-y-6">
         <div class="flex items-center justify-between gap-4">
             <div><p class="text-sm font-semibold uppercase tracking-[0.16em] text-black/55">Administration</p><h1 class="mt-2 text-3xl font-semibold">Photos</h1></div>
