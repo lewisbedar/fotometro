@@ -1,9 +1,13 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Admin\PhotoCategoryController;
+use App\Http\Controllers\Admin\PhotoController;
+use App\Http\Controllers\Admin\PhotoSelectionApiController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MapDataController;
+use App\Http\Controllers\PublicPhotoController;
 use App\Http\Controllers\PublicLineController;
 use App\Http\Controllers\PublicStationController;
 use App\Http\Controllers\StationSearchController;
@@ -54,6 +58,7 @@ Route::get('/api/map', MapDataController::class)->name('api.map');
 Route::get('/api/map/search', StationSearchController::class)->middleware('throttle:30,1')->name('api.map.search');
 Route::get('/stations/{station:slug}', [PublicStationController::class, 'show'])->name('stations.show');
 Route::get('/lignes/{line:slug}', [PublicLineController::class, 'show'])->name('lines.show');
+Route::get('/photos/{photo:slug}', [PublicPhotoController::class, 'show'])->name('photos.show');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
@@ -62,5 +67,18 @@ Route::middleware('guest')->group(function (): void {
 
 Route::middleware('auth')->group(function (): void {
     Route::get('/admin', DashboardController::class)->name('admin.dashboard');
+    Route::get('/admin/api/lines/{line}/stations', [PhotoSelectionApiController::class, 'stations'])->name('admin.api.lines.stations');
+    Route::get('/admin/api/stations/{station}/accesses', [PhotoSelectionApiController::class, 'accesses'])->name('admin.api.stations.accesses');
+    Route::resource('/admin/photo-categories', PhotoCategoryController::class)
+        ->except(['show', 'destroy'])
+        ->names('admin.photo-categories');
+    Route::get('/admin/photos/import', [PhotoController::class, 'create'])->name('admin.photos.import');
+    Route::post('/admin/photos/bulk', [PhotoController::class, 'bulk'])->name('admin.photos.bulk');
+    Route::post('/admin/photos/{photo}/process', [PhotoController::class, 'process'])->name('admin.photos.process');
+    Route::post('/admin/photos/{photo}/publish', [PhotoController::class, 'publish'])->name('admin.photos.publish');
+    Route::post('/admin/photos/{photo}/unpublish', [PhotoController::class, 'unpublish'])->name('admin.photos.unpublish');
+    Route::resource('/admin/photos', PhotoController::class)
+        ->except(['create'])
+        ->names('admin.photos');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });

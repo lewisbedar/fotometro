@@ -74,4 +74,9 @@ class Station extends Model
     {
         return $this->hasMany(LineStationSequence::class);
     }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(Photo::class);
+    }
 }

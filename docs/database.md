@@ -62,3 +62,9 @@ La clé primaire composée est `station_id, line_id`. Un index `line_id, positio
 Les tables publiques conservent les champs editoriaux de fotometro et ajoutent des metadonnees d'import: `external_id` quand necessaire, `source`, `source_payload`, `source_updated_at` et `is_active`. Les payloads source sont conserves pour audit technique et ne sont pas exposes par l'API publique.
 
 `station_accesses` stocke les acces et sorties issus des sources IDFM. `access_station` relie un acces a une ou plusieurs stations.
+
+# Catalogue photographique
+
+Le catalogue photo ajoute `photo_categories` et `photos`.
+
+`photos.station_id` est obligatoire. `photos.station_access_id` reste optionnel et doit correspondre a un acces rattache a la station choisie. Les chemins `original_path`, `web_path` et `thumbnail_path` sont des chemins de stockage Laravel, jamais des chemins systeme exposes.

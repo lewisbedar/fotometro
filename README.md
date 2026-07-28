@@ -116,3 +116,18 @@ L'import cree ou met a jour lignes, stations, correspondances, ordre GTFS, termi
 Voir `docs/idfm-import.md` pour les sources, variables d'environnement et procedures o2switch.
 
 `arrets-lignes` utilise automatiquement l'export CSV IDFM (`/exports/csv?limit=-1`) afin d'eviter la limite des 10 000 enregistrements de l'endpoint `/records`.
+
+## Catalogue photographique
+
+Le socle photo ajoute des categories administrables, l'import multi-fichiers, le stockage prive des originaux, la generation de versions web et miniatures, la lecture EXIF tolerante, les licences et la publication publique par station.
+
+Le workflow admin est volontairement simple: choisir une station, importer les photos, garder l'option de publication automatique activee, puis laisser la commande de traitement publier les images des qu'elles sont pretes. Le mode brouillon reste disponible pour preparer des photos sans les rendre publiques.
+
+Commandes utiles:
+
+```bash
+php artisan db:seed --class=PhotoCategorySeeder
+php artisan fotometro:process-photos --limit=10
+```
+
+Voir `docs/photos.md` et `docs/photo-processing.md`.

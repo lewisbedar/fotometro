@@ -31,17 +31,21 @@
                 'max-w-6xl' => ! $fullWidth,
             ])>
                 <header class="flex items-center justify-between gap-4 border-b border-black/10 pb-5">
-                    <a href="{{ route('home') }}" class="text-xl font-semibold tracking-[0.08em] text-[#151515]">fotometro</a>
-                    <nav class="flex items-center gap-3 text-sm">
+                    <x-fotometro-logo />
+                    <nav class="flex flex-wrap items-center justify-end gap-3 text-sm">
                         @auth
-                            <a href="{{ route('admin.dashboard') }}" class="font-medium text-[#151515] hover:underline">Administration</a>
+                            <a href="{{ route('admin.dashboard') }}" class="font-medium text-[#151515] hover:underline">Tableau de bord</a>
+                            <a href="{{ route('admin.photos.index') }}" class="font-medium text-[#151515] hover:underline">Photos</a>
+                            <a href="{{ route('admin.photo-categories.index') }}" class="font-medium text-[#151515] hover:underline">Catégories</a>
+                            <a href="{{ route('home') }}" class="font-medium text-[#151515] hover:underline">Retour à la carte</a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button class="rounded-md border border-black/15 bg-white px-3 py-2 font-medium hover:bg-black hover:text-white">
-                                    Deconnexion
+                                    Déconnexion
                                 </button>
                             </form>
                         @else
+                            <a href="{{ route('home') }}" class="font-medium text-[#151515] hover:underline">Retour à la carte</a>
                             <a href="{{ route('login') }}" class="rounded-md border border-black/15 bg-white px-3 py-2 font-medium hover:bg-black hover:text-white">
                                 Connexion admin
                             </a>
