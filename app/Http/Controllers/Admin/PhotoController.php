@@ -24,14 +24,14 @@ class PhotoController extends Controller
     public function index(Request $request): View
     {
         $photos = Photo::query()
-            ->with(['station.lines', 'stationAccess', 'category'])
+            ->with(['station.lines', 'stationAccess', 'categories'])
             ->when($request->filled('q'), fn ($query) => $query->where(fn ($inner) => $inner
                 ->where('title', 'like', '%'.$request->q.'%')
                 ->orWhere('original_filename', 'like', '%'.$request->q.'%')
                 ->orWhere('description', 'like', '%'.$request->q.'%')
                 ->orWhereHas('station', fn ($station) => $station->where('name', 'like', '%'.$request->q.'%'))))
             ->when($request->filled('station_id'), fn ($query) => $query->where('station_id', $request->station_id))
-            ->when($request->filled('category_id'), fn ($query) => $query->where('photo_category_id', $request->category_id))
+            ->when($request->filled('category_id'), fn ($query) => $query->whereHas('categories', fn ($categories) => $categories->whereKey($request->category_id)))
             ->when($request->filled('processing_status'), fn ($query) => $query->where('processing_status', $request->processing_status))
             ->when($request->filled('published'), fn ($query) => $query->where('is_published', $request->boolean('published')))
             ->latest()
@@ -69,7 +69,8 @@ class PhotoController extends Controller
             'photos' => ['required', 'array', 'size:'.count($request->file('files', []))],
             'photos.*.station_id' => ['required', 'exists:stations,id'],
             'photos.*.station_access_id' => ['nullable', 'exists:station_accesses,id'],
-            'photos.*.photo_category_id' => ['nullable', 'exists:photo_categories,id'],
+            'photos.*.photo_category_ids' => ['nullable', 'array'],
+            'photos.*.photo_category_ids.*' => ['integer', 'exists:photo_categories,id'],
             'photos.*.description' => ['nullable', 'string'],
         ]);
         $data['publish_when_ready'] = $data['publish_mode'] === 'auto';
@@ -107,7 +108,7 @@ class PhotoController extends Controller
 
     public function show(Photo $photo): View
     {
-        $photo->load(['station', 'stationAccess', 'category']);
+        $photo->load(['station.lines', 'stationAccess', 'categories']);
 
         return view('admin.photos.show', [
             'photo' => $photo,
@@ -120,7 +121,8 @@ class PhotoController extends Controller
         $data = $request->validate([
             'station_id' => ['required', 'exists:stations,id'],
             'station_access_id' => ['nullable', 'exists:station_accesses,id'],
-            'photo_category_id' => ['nullable', 'exists:photo_categories,id'],
+            'category_ids' => ['nullable', 'array'],
+            'category_ids.*' => ['integer', 'exists:photo_categories,id'],
             'title' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'taken_at' => ['nullable', 'date'],
@@ -139,7 +141,7 @@ class PhotoController extends Controller
         $oldStation = $photo->station;
 
         $photo->update([
-            ...$data,
+            ...collect($data)->except(['category_ids'])->all(),
             'station_access_id' => $data['station_access_id'] ?? null,
             'is_featured' => $request->boolean('is_featured'),
             'is_published' => $request->boolean('is_published'),
@@ -147,6 +149,8 @@ class PhotoController extends Controller
             'published_at' => $request->boolean('is_published') ? ($photo->published_at ?? now()) : null,
             'sort_order' => (int) ($data['sort_order'] ?? 0),
         ]);
+
+        $photo->categories()->sync($data['category_ids'] ?? []);
 
         $coverageUpdater->update($oldStation);
         $coverageUpdater->update($photo->station);
@@ -270,7 +274,7 @@ class PhotoController extends Controller
         }
 
         return [
-            'categories' => PhotoCategory::query()->where('is_active', true)->orderBy('name')->get(),
+            'categories' => PhotoCategory::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(),
             'licenses' => PhotoLicense::cases(),
             'lines' => Line::query()
                 ->where('is_active', true)

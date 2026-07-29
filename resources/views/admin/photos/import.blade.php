@@ -138,16 +138,31 @@
                                 </div>
 
                                 <div class="grid gap-3 lg:grid-cols-[1fr_auto]">
-                                    <label class="block text-sm font-semibold">Catégorie
-                                        <select class="mt-1 w-full rounded-md border border-black/15 bg-white p-2" x-model="photo.categoryId">
-                                            <option value="">Aucune</option>
-                                            @foreach($categories as $category)
-                                                <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                            @endforeach
-                                        </select>
-                                    </label>
-                                    <button type="button" title="Appliquer cette catégorie à toutes les photos" class="mt-6 flex items-center justify-center rounded-md border border-black/15 bg-white px-2" x-on:click="duplicateField(index, 'categoryId')"><x-icons.duplicate class="h-4 w-4" /></button>
-                                    <input type="hidden" :name="`photos[${index}][photo_category_id]`" :value="photo.categoryId">
+                                    <div class="block text-sm font-semibold" x-data="{ open: false }">
+                                        Catégories
+                                        <div class="relative mt-1">
+                                            <button
+                                                type="button"
+                                                class="flex w-full items-center justify-between rounded-md border border-black/15 bg-white p-2 text-left font-normal"
+                                                x-on:click="open = ! open"
+                                            >
+                                                <span x-text="photo.categoryIds.length ? photo.categoryIds.length + ' sélectionnée(s)' : 'Aucune'"></span>
+                                                <x-icons.chevron-down class="h-4 w-4" />
+                                            </button>
+                                            <div
+                                                class="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-black/15 bg-white p-2 shadow-lg"
+                                                x-show="open"
+                                                x-cloak
+                                                x-on:click.outside="open = false"
+                                            >
+                                                <x-category-checklist :categories="$categories" alpine-model="photo.categoryIds" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" title="Appliquer ces catégories à toutes les photos" class="mt-6 flex items-center justify-center rounded-md border border-black/15 bg-white px-2" x-on:click="duplicateField(index, 'categoryIds')"><x-icons.duplicate class="h-4 w-4" /></button>
+                                    <template x-for="categoryId in photo.categoryIds" :key="categoryId">
+                                        <input type="hidden" :name="`photos[${index}][photo_category_ids][]`" :value="categoryId">
+                                    </template>
                                 </div>
 
                                 <div class="grid gap-3 lg:grid-cols-[1fr_auto]">

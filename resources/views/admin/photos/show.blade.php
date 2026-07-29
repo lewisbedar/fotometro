@@ -6,7 +6,13 @@
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold">{{ $photo->title ?: $photo->original_filename }}</h1>
-                <p class="text-sm text-black/60">{{ $photo->station->name }} · {{ $photo->adminStatusLabel() }}</p>
+                <div class="mt-1.5 flex flex-wrap items-center gap-2">
+                    <span class="ratp-sign-mini"><span class="ratp-sign-mini-plate"><span class="ratp-sign-mini-text">{{ $photo->station->name }}</span></span></span>
+                    @foreach ($photo->station->lines as $line)
+                        <span class="rounded-full px-2.5 py-0.5 text-xs font-bold" style="background: {{ $line->color }}; color: {{ $line->text_color }}">{{ $line->code }}</span>
+                    @endforeach
+                    <span class="text-sm text-black/60">· {{ $photo->adminStatusLabel() }}</span>
+                </div>
                 @if ($photo->station->cover_photo_id === $photo->id)
                     <span class="mt-1 inline-block rounded-full bg-black px-2 py-0.5 text-xs font-semibold text-white">Photo de couverture</span>
                 @endif
@@ -35,23 +41,45 @@
                 @endif
             </div>
 
-            <form method="POST" action="{{ route('admin.photos.update', $photo) }}" class="space-y-5">
+            <form method="POST" action="{{ route('admin.photos.update', $photo) }}" class="space-y-4">
                 @csrf @method('PUT')
-                <label class="block text-sm font-semibold">Titre <input name="title" value="{{ old('title', $photo->title) }}" class="mt-1 w-full rounded-md border border-black/15 p-2"></label>
-                <label class="block text-sm font-semibold">Description <textarea name="description" class="mt-1 w-full rounded-md border border-black/15 p-2">{{ old('description', $photo->description) }}</textarea></label>
-                @include('admin.photos.partials.location-selector')
-                <label class="block text-sm font-semibold">Catégorie <select name="photo_category_id" class="mt-1 w-full rounded-md border border-black/15 p-2"><option value="">Aucune</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected(old('photo_category_id', $photo->photo_category_id) == $category->id)>{{ $category->name }}</option>@endforeach</select></label>
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <label class="block text-sm font-semibold">Date <input type="datetime-local" name="taken_at" value="{{ old('taken_at', $photo->taken_at?->format('Y-m-d\\TH:i')) }}" class="mt-1 w-full rounded-md border border-black/15 p-2"></label>
-                    <label class="block text-sm font-semibold">Ordre <input type="number" min="0" name="sort_order" value="{{ old('sort_order', $photo->sort_order) }}" class="mt-1 w-full rounded-md border border-black/15 p-2"></label>
+
+                <div class="space-y-4 rounded-lg border border-black/10 bg-black/[0.02] p-4">
+                    <h2 class="text-base font-semibold">Informations</h2>
+                    <label class="block text-sm font-semibold">Titre <input name="title" value="{{ old('title', $photo->title) }}" class="mt-1 w-full rounded-md border border-black/15 bg-white p-2"></label>
+                    <label class="block text-sm font-semibold">Description <textarea name="description" class="mt-1 w-full rounded-md border border-black/15 bg-white p-2">{{ old('description', $photo->description) }}</textarea></label>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <label class="block text-sm font-semibold">Date <input type="datetime-local" name="taken_at" value="{{ old('taken_at', $photo->taken_at?->format('Y-m-d\\TH:i')) }}" class="mt-1 w-full rounded-md border border-black/15 bg-white p-2"></label>
+                        <label class="block text-sm font-semibold">Ordre <input type="number" min="0" name="sort_order" value="{{ old('sort_order', $photo->sort_order) }}" class="mt-1 w-full rounded-md border border-black/15 bg-white p-2"></label>
+                    </div>
                 </div>
-                <label class="block text-sm font-semibold">Titulaire <input name="copyright_holder" value="{{ old('copyright_holder', $photo->copyright_holder) }}" class="mt-1 w-full rounded-md border border-black/15 p-2"></label>
-                <label class="block text-sm font-semibold">Mention <input name="copyright_notice" value="{{ old('copyright_notice', $photo->copyright_notice) }}" class="mt-1 w-full rounded-md border border-black/15 p-2"></label>
-                <label class="block text-sm font-semibold">Licence <select name="license" class="mt-1 w-full rounded-md border border-black/15 p-2">@foreach($licenses as $license)<option value="{{ $license->value }}" @selected(old('license', $photo->license->value) === $license->value)>{{ $license->label() }}</option>@endforeach</select></label>
-                <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="is_featured" value="1" @checked(old('is_featured', $photo->is_featured))> Mise en avant</label>
-                <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="publish_when_ready" value="1" @checked(old('publish_when_ready', $photo->publish_when_ready))> Publier automatiquement quand le traitement réussit</label>
-                <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="is_published" value="1" @checked(old('is_published', $photo->is_published))> Publiée</label>
-                <button class="rounded-md bg-black px-4 py-2 font-semibold text-white">Enregistrer</button>
+
+                @include('admin.photos.partials.location-selector')
+
+                <div class="space-y-3 rounded-lg border border-black/10 bg-black/[0.02] p-4">
+                    <h2 class="text-base font-semibold">Catégories</h2>
+                    <x-category-checklist
+                        :categories="$categories"
+                        name="category_ids"
+                        :selected="old('category_ids', $photo->categories->pluck('id')->all())"
+                    />
+                </div>
+
+                <div class="space-y-4 rounded-lg border border-black/10 bg-black/[0.02] p-4">
+                    <h2 class="text-base font-semibold">Droits &amp; licence</h2>
+                    <label class="block text-sm font-semibold">Titulaire <input name="copyright_holder" value="{{ old('copyright_holder', $photo->copyright_holder) }}" class="mt-1 w-full rounded-md border border-black/15 bg-white p-2"></label>
+                    <label class="block text-sm font-semibold">Mention <input name="copyright_notice" value="{{ old('copyright_notice', $photo->copyright_notice) }}" class="mt-1 w-full rounded-md border border-black/15 bg-white p-2"></label>
+                    <label class="block text-sm font-semibold">Licence <select name="license" class="mt-1 w-full rounded-md border border-black/15 bg-white p-2">@foreach($licenses as $license)<option value="{{ $license->value }}" @selected(old('license', $photo->license->value) === $license->value)>{{ $license->label() }}</option>@endforeach</select></label>
+                </div>
+
+                <div class="space-y-2 rounded-lg border border-black/10 bg-black/[0.02] p-4">
+                    <h2 class="text-base font-semibold">Publication</h2>
+                    <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="is_featured" value="1" @checked(old('is_featured', $photo->is_featured))> Mise en avant</label>
+                    <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="publish_when_ready" value="1" @checked(old('publish_when_ready', $photo->publish_when_ready))> Publier automatiquement quand le traitement réussit</label>
+                    <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="is_published" value="1" @checked(old('is_published', $photo->is_published))> Publiée</label>
+                </div>
+
+                <button class="w-full rounded-md bg-black px-4 py-2 font-semibold text-white">Enregistrer</button>
             </form>
         </div>
     </div>

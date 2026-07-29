@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\PhotoLicense;
 use App\Enums\PhotoProcessingStatus;
+use App\Models\Photo;
 use App\Models\PhotoCategory;
 use App\Models\Station;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -17,7 +18,6 @@ class PhotoFactory extends Factory
         return [
             'station_id' => Station::factory(),
             'station_access_id' => null,
-            'photo_category_id' => PhotoCategory::factory(),
             'title' => fake()->optional()->sentence(3),
             'slug' => Str::slug(fake()->unique()->sentence(3)),
             'description' => fake()->optional()->paragraph(),
@@ -39,5 +39,12 @@ class PhotoFactory extends Factory
             'published_at' => now(),
             'sort_order' => 0,
         ];
+    }
+
+    public function withCategories(PhotoCategory|int ...$categories): static
+    {
+        $ids = collect($categories)->map(fn (PhotoCategory|int $category) => $category instanceof PhotoCategory ? $category->id : $category);
+
+        return $this->afterCreating(fn (Photo $photo) => $photo->categories()->attach($ids));
     }
 }

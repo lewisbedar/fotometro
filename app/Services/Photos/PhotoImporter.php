@@ -38,7 +38,6 @@ class PhotoImporter
             $photo = Photo::query()->create([
                 'station_id' => $attributes['station_id'],
                 'station_access_id' => $attributes['station_access_id'] ?? null,
-                'photo_category_id' => $attributes['photo_category_id'] ?? null,
                 'title' => $attributes['title'] ?? null,
                 'slug' => $this->uniqueSlug($attributes['title'] ?? pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)),
                 'description' => $attributes['description'] ?? null,
@@ -72,6 +71,8 @@ class PhotoImporter
                 'published_at' => null,
                 'sort_order' => (int) ($attributes['sort_order'] ?? 0),
             ]);
+
+            $photo->categories()->sync($attributes['photo_category_ids'] ?? []);
 
             if (config('fotometro.photos.process_synchronously', false)) {
                 $this->processor->process($photo);

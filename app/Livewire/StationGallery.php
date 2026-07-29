@@ -99,15 +99,17 @@ class StationGallery extends Component
     #[Computed]
     public function categoryFilters(): Collection
     {
-        $photos = $this->allPhotos;
+        // Each photo can carry several categories now, so it may contribute to
+        // several root groups at once (e.g. a photo tagged both "Entrée" and
+        // "Carrelage" counts under both Extérieur and Architecture).
+        $photoRoots = $this->allPhotos->map(fn (Photo $photo) => $photo->categories
+            ->map(fn (PhotoCategory $category) => $category->parent ?: $category)
+            ->unique('id'));
 
-        return $photos
-            ->map(fn (Photo $photo) => $photo->category?->parent ?: $photo->category)
-            ->filter()
-            ->groupBy('id')
-            ->map(fn (Collection $categories, int $id) => [
-                'category' => $categories->first(),
-                'count' => $photos->filter(fn (Photo $photo) => $photo->category?->id === $id || $photo->category?->parent_id === $id)->count(),
+        return $photoRoots->flatten(1)->unique('id')->keyBy('id')
+            ->map(fn (PhotoCategory $root) => [
+                'category' => $root,
+                'count' => $photoRoots->filter(fn (Collection $roots) => $roots->contains('id', $root->id))->count(),
             ])
             ->sortBy(fn (array $item) => [$item['category']->sort_order, $item['category']->name])
             ->values();
@@ -123,8 +125,8 @@ class StationGallery extends Component
         }
 
         return $this->allPhotos
-            ->map(fn (Photo $photo) => $photo->category)
-            ->filter(fn (?PhotoCategory $category) => $category && (int) $category->parent_id === (int) $selected->id)
+            ->flatMap(fn (Photo $photo) => $photo->categories)
+            ->filter(fn (PhotoCategory $category) => (int) $category->parent_id === (int) $selected->id)
             ->groupBy('id')
             ->map(fn (Collection $categories) => [
                 'category' => $categories->first(),
@@ -139,7 +141,7 @@ class StationGallery extends Component
         return Photo::query()
             ->publiclyVisible()
             ->where('station_id', $this->station->id)
-            ->with(['category.parent', 'stationAccess'])
+            ->with(['categories.parent', 'stationAccess'])
             ->orderBy('sort_order')
             ->orderByRaw('taken_at IS NULL')
             ->orderBy('taken_at')
@@ -148,14 +150,16 @@ class StationGallery extends Component
 
     private function applyCategoryFilter(Builder $query, PhotoCategory $category): void
     {
+        // A photo matches if at least one of its (possibly several) categories
+        // falls within the targeted set — not an exact single-category match.
         if ($category->parent_id !== null) {
-            $query->where('photo_category_id', $category->id);
+            $query->whereHas('categories', fn ($categories) => $categories->whereKey($category->id));
 
             return;
         }
 
         $childIds = $category->children()->pluck('id')->all();
-        $query->whereIn('photo_category_id', [$category->id, ...$childIds]);
+        $query->whereHas('categories', fn ($categories) => $categories->whereIn('photo_categories.id', [$category->id, ...$childIds]));
     }
 
     public function render(): View

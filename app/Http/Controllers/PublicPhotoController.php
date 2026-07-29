@@ -11,7 +11,7 @@ class PublicPhotoController extends Controller
     {
         abort_unless(Photo::query()->publiclyVisible()->whereKey($photo->id)->exists(), 404);
 
-        $photo->load(['station', 'stationAccess', 'category']);
+        $photo->load(['station.lines', 'stationAccess', 'categories']);
         $neighbors = Photo::query()
             ->publiclyVisible()
             ->where('station_id', $photo->station_id)

@@ -6,7 +6,7 @@
     data-lightbox-image="{{ $photo->web_url }}"
     data-lightbox-title="{{ $photo->publicLabel() }}"
     @if ($photo->description) data-lightbox-description="{{ $photo->description }}" @endif
-    @if ($photo->category) data-lightbox-category="{{ $photo->category->name }}" @endif
+    @if ($photo->categories->isNotEmpty()) data-lightbox-category="{{ $photo->categories->pluck('name')->join(', ') }}" @endif
     data-lightbox-copyright="{{ $photo->copyright_notice }}"
     @if ($photo->credit_line) data-lightbox-credit="{{ $photo->credit_line }}" @endif
     data-lightbox-license="{{ $photo->license->label() }}"

@@ -9,12 +9,15 @@
         <header>
             <p class="text-sm font-semibold uppercase tracking-[0.16em] text-black/55">Photographie</p>
             <h1 class="mt-2 text-4xl font-semibold">{{ $photo->publicLabel() }}</h1>
-            <p class="mt-3 text-black/65">
-                {{ $photo->station->name }}
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+                <span class="ratp-sign-mini"><span class="ratp-sign-mini-plate"><span class="ratp-sign-mini-text">{{ $photo->station->name }}</span></span></span>
+                @foreach ($photo->station->lines as $line)
+                    <span class="rounded-full px-2.5 py-0.5 text-xs font-bold" style="background: {{ $line->color }}; color: {{ $line->text_color }}">{{ $line->code }}</span>
+                @endforeach
                 @if($photo->stationAccess)
-                    · {{ $photo->stationAccess->displayName() }}
+                    <span class="text-black/65">· {{ $photo->stationAccess->displayName() }}</span>
                 @endif
-            </p>
+            </div>
         </header>
 
         @if ($photo->web_url)
@@ -51,7 +54,7 @@
                     <dl class="mt-4 space-y-3">
                         <div><dt class="text-black/55">Station</dt><dd><a class="font-semibold underline" href="{{ route('stations.show', $photo->station) }}">{{ $photo->station->name }}</a></dd></div>
                         @if ($photo->stationAccess)<div><dt class="text-black/55">Accès</dt><dd>{{ $photo->stationAccess->displayName() }}</dd></div>@endif
-                        @if ($photo->category)<div><dt class="text-black/55">Catégorie</dt><dd>{{ $photo->category->name }}</dd></div>@endif
+                        @if ($photo->categories->isNotEmpty())<div><dt class="text-black/55">Catégories</dt><dd>{{ $photo->categories->pluck('name')->join(', ') }}</dd></div>@endif
                     </dl>
                 </section>
 
