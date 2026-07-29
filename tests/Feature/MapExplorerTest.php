@@ -695,4 +695,14 @@ class MapExplorerTest extends TestCase
 
         $this->get(route('stations.show', $station))->assertNotFound();
     }
+
+    public function test_htaccess_declares_javascript_mime_type_for_mjs(): void
+    {
+        // o2switch/Apache serves .mjs without a Content-Type otherwise, and browsers refuse to
+        // execute the MapLibre worker (public/vendor/maplibre-gl/*.mjs) as a module script —
+        // see docs/deployment-o2switch.md §11.
+        $htaccess = file_get_contents(public_path('.htaccess'));
+
+        $this->assertStringContainsString('AddType application/javascript .mjs', $htaccess);
+    }
 }

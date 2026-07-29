@@ -1,3 +1,10 @@
+<IfModule mod_mime.c>
+    # o2switch/Apache serves .mjs without a Content-Type by default, which browsers
+    # reject for module scripts ("Failed to load module script: ... non-JavaScript
+    # MIME type"). This breaks the MapLibre worker (public/vendor/maplibre-gl/*.mjs).
+    AddType application/javascript .mjs
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
