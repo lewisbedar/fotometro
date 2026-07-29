@@ -75,6 +75,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/admin', DashboardController::class)->name('admin.dashboard');
     Route::get('/admin/api/lines/{line}/stations', [PhotoSelectionApiController::class, 'stations'])->name('admin.api.lines.stations');
     Route::get('/admin/api/stations/{station}/accesses', [PhotoSelectionApiController::class, 'accesses'])->name('admin.api.stations.accesses');
+    Route::post('/admin/photos/detect-station', [PhotoSelectionApiController::class, 'detectStation'])->name('admin.api.photos.detect-station');
     Route::resource('/admin/photo-categories', PhotoCategoryController::class)
         ->except(['show', 'destroy'])
         ->names('admin.photo-categories');
