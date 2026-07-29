@@ -37,27 +37,29 @@
                 'max-w-[1600px]' => $fullWidth,
                 'max-w-6xl' => ! $fullWidth,
             ])>
-                <header class="flex items-center justify-between gap-4 border-b border-black/10 pb-5">
+                <header class="flex flex-wrap items-center justify-between gap-4 border-b border-black/10 pb-5">
                     <x-fotometro-logo />
-                    <nav class="flex flex-wrap items-center justify-end gap-3 text-sm">
+                    <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
                         @auth
-                            <a href="{{ route('admin.dashboard') }}" class="font-medium text-[#151515] hover:underline">Tableau de bord</a>
-                            <a href="{{ route('admin.photos.index') }}" class="font-medium text-[#151515] hover:underline">Photos</a>
-                            <a href="{{ route('admin.photo-categories.index') }}" class="font-medium text-[#151515] hover:underline">Catégories</a>
-                            <a href="{{ route('home') }}" class="font-medium text-[#151515] hover:underline">Retour à la carte</a>
+                            <nav class="flex flex-wrap items-center gap-1 rounded-full bg-black/5 p-1 text-xs sm:text-sm">
+                                <a href="{{ route('admin.dashboard') }}" class="rounded-full px-3 py-1.5 font-medium transition {{ request()->routeIs('admin.dashboard') ? 'bg-black text-white' : 'text-[#151515] hover:bg-black/10' }}">Tableau de bord</a>
+                                <a href="{{ route('admin.photos.index') }}" class="rounded-full px-3 py-1.5 font-medium transition {{ request()->routeIs('admin.photos.*') ? 'bg-black text-white' : 'text-[#151515] hover:bg-black/10' }}">Photos</a>
+                                <a href="{{ route('admin.photo-categories.index') }}" class="rounded-full px-3 py-1.5 font-medium transition {{ request()->routeIs('admin.photo-categories.*') ? 'bg-black text-white' : 'text-[#151515] hover:bg-black/10' }}">Catégories</a>
+                            </nav>
+                            <a href="{{ route('home') }}" class="text-xs font-medium text-[#151515] hover:underline sm:text-sm">Retour à la carte</a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
-                                <button class="rounded-md border border-black/15 bg-white px-3 py-2 font-medium hover:bg-black hover:text-white">
+                                <button class="rounded-md border border-black/15 bg-white px-3 py-2 text-xs font-medium hover:bg-black hover:text-white sm:text-sm">
                                     Déconnexion
                                 </button>
                             </form>
                         @else
-                            <a href="{{ route('home') }}" class="font-medium text-[#151515] hover:underline">Retour à la carte</a>
-                            <a href="{{ route('login') }}" class="rounded-md border border-black/15 bg-white px-3 py-2 font-medium hover:bg-black hover:text-white">
+                            <a href="{{ route('home') }}" class="text-xs font-medium text-[#151515] hover:underline sm:text-sm">Retour à la carte</a>
+                            <a href="{{ route('login') }}" class="rounded-md border border-black/15 bg-white px-3 py-2 text-xs font-medium hover:bg-black hover:text-white sm:text-sm">
                                 Connexion admin
                             </a>
                         @endauth
-                    </nav>
+                    </div>
                 </header>
 
                 <main class="flex-1 py-10">

@@ -107,12 +107,9 @@ class PhotoController extends Controller
 
     public function show(Photo $photo): View
     {
-        return view('admin.photos.show', ['photo' => $photo->load(['station', 'stationAccess', 'category'])]);
-    }
+        $photo->load(['station', 'stationAccess', 'category']);
 
-    public function edit(Photo $photo): View
-    {
-        return view('admin.photos.form', [
+        return view('admin.photos.show', [
             'photo' => $photo,
             ...$this->formData($photo->station_id),
         ]);

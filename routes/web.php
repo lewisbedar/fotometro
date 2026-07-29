@@ -87,7 +87,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/admin/photos/{photo}/set-cover', [PhotoController::class, 'setCover'])->name('admin.photos.set-cover');
     Route::delete('/admin/photos/{photo}/unset-cover', [PhotoController::class, 'unsetCover'])->name('admin.photos.unset-cover');
     Route::resource('/admin/photos', PhotoController::class)
-        ->except(['create'])
+        ->except(['create', 'edit'])
         ->names('admin.photos');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });

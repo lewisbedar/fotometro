@@ -2133,6 +2133,15 @@ window.fotometroPhotoForm = function fotometroPhotoForm(options) {
                     this.stationId = '';
                     this.accessId = '';
                     this.accesses = [];
+                } else {
+                    // The <select> renders its <option>s from `stations` via x-for; x-model only
+                    // re-applies the DOM value when `stationId` itself changes, not when the options
+                    // it depends on appear. Without this, a preselected station with a value set
+                    // before its <option> existed shows blank even though the model is correct.
+                    const current = this.stationId;
+                    this.stationId = '';
+                    await this.$nextTick();
+                    this.stationId = current;
                 }
 
                 this.mapStatus = this.stationId ? 'Station sélectionnée.' : 'Sélectionnez une station.';
@@ -2166,6 +2175,12 @@ window.fotometroPhotoForm = function fotometroPhotoForm(options) {
 
                 if (! keepSelection || ! this.accesses.some((access) => String(access.id) === String(this.accessId))) {
                     this.accessId = '';
+                } else {
+                    // Same x-model/x-for race as loadStations() above.
+                    const current = this.accessId;
+                    this.accessId = '';
+                    await this.$nextTick();
+                    this.accessId = current;
                 }
             } catch (error) {
                 this.accesses = [];
