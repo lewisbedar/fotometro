@@ -41,11 +41,16 @@
                     <x-fotometro-logo />
                     <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
                         @auth
-                            <nav class="flex flex-wrap items-center gap-1 rounded-full bg-black/5 p-1 text-xs sm:text-sm">
-                                <a href="{{ route('admin.dashboard') }}" class="rounded-full px-3 py-1.5 font-medium transition {{ request()->routeIs('admin.dashboard') ? 'bg-black text-white' : 'text-[#151515] hover:bg-black/10' }}">Tableau de bord</a>
-                                <a href="{{ route('admin.photos.index') }}" class="rounded-full px-3 py-1.5 font-medium transition {{ request()->routeIs('admin.photos.*') ? 'bg-black text-white' : 'text-[#151515] hover:bg-black/10' }}">Photos</a>
-                                <a href="{{ route('admin.photo-categories.index') }}" class="rounded-full px-3 py-1.5 font-medium transition {{ request()->routeIs('admin.photo-categories.*') ? 'bg-black text-white' : 'text-[#151515] hover:bg-black/10' }}">Catégories</a>
-                            </nav>
+                            @if (auth()->user()->canModerate())
+                                <nav class="flex flex-wrap items-center gap-1 rounded-full bg-black/5 p-1 text-xs sm:text-sm">
+                                    <a href="{{ route('admin.dashboard') }}" class="rounded-full px-3 py-1.5 font-medium transition {{ request()->routeIs('admin.dashboard') ? 'bg-black text-white' : 'text-[#151515] hover:bg-black/10' }}">Tableau de bord</a>
+                                    @if (auth()->user()->isAdmin())
+                                        <a href="{{ route('admin.photos.index') }}" class="rounded-full px-3 py-1.5 font-medium transition {{ request()->routeIs('admin.photos.*') ? 'bg-black text-white' : 'text-[#151515] hover:bg-black/10' }}">Photos</a>
+                                        <a href="{{ route('admin.photo-categories.index') }}" class="rounded-full px-3 py-1.5 font-medium transition {{ request()->routeIs('admin.photo-categories.*') ? 'bg-black text-white' : 'text-[#151515] hover:bg-black/10' }}">Catégories</a>
+                                        <a href="{{ route('admin.users.index') }}" class="rounded-full px-3 py-1.5 font-medium transition {{ request()->routeIs('admin.users.*') ? 'bg-black text-white' : 'text-[#151515] hover:bg-black/10' }}">Comptes</a>
+                                    @endif
+                                </nav>
+                            @endif
                             <a href="{{ route('home') }}" class="text-xs font-medium text-[#151515] hover:underline sm:text-sm">Retour à la carte</a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
@@ -56,7 +61,7 @@
                         @else
                             <a href="{{ route('home') }}" class="text-xs font-medium text-[#151515] hover:underline sm:text-sm">Retour à la carte</a>
                             <a href="{{ route('login') }}" class="rounded-md border border-black/15 bg-white px-3 py-2 text-xs font-medium hover:bg-black hover:text-white sm:text-sm">
-                                Connexion admin
+                                Connexion
                             </a>
                         @endauth
                     </div>
