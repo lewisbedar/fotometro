@@ -20,4 +20,15 @@ enum PhotoLicense: string
             self::Custom => 'Licence personnalisee',
         };
     }
+
+    public function copyrightNotice(string $holder): string
+    {
+        return match ($this) {
+            self::AllRightsReserved => "© {$holder} — Tous droits réservés",
+            self::PersonalUseOnly => "© {$holder} — Usage personnel uniquement, toute autre utilisation interdite sans autorisation",
+            self::CcBy => "© {$holder} — Publié sous licence Creative Commons BY (attribution requise)",
+            self::CcByNc => "© {$holder} — Publié sous licence Creative Commons BY-NC (attribution requise, usage non commercial)",
+            self::Custom => "© {$holder} — Licence personnalisée, voir conditions d'utilisation",
+        };
+    }
 }

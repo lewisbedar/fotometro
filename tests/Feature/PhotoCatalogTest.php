@@ -303,9 +303,8 @@ class PhotoCatalogTest extends TestCase
         $this->actingAs($user)
             ->get(route('admin.photos.import'))
             ->assertOk()
-            ->assertSee('photo-line-id', false)
-            ->assertSee('photo-station-id', false)
-            ->assertSee('photo-station-access-id', false)
+            ->assertSee('fotometroPhotoImportWizard', false)
+            ->assertSee('Ligne '.$line->code, false)
             ->assertDontSee('<option value="'.$station->id.'">'.$station->name.'</option>', false);
 
         $this->actingAs($user)
@@ -389,18 +388,64 @@ class PhotoCatalogTest extends TestCase
         $station = Station::factory()->create();
 
         $this->actingAs(User::factory()->create())->post(route('admin.photos.store'), [
-            'station_id' => $station->id,
             'license' => 'all_rights_reserved',
             'publish_mode' => 'auto',
             'files' => [
                 UploadedFile::fake()->image('one.jpg', 800, 600),
                 UploadedFile::fake()->image('two.jpg', 800, 600),
             ],
+            'photos' => [
+                ['station_id' => $station->id],
+                ['station_id' => $station->id],
+            ],
         ])->assertRedirect(route('admin.photos.index'))
             ->assertSessionHas('status');
 
         $this->assertDatabaseCount('photos', 2);
         $this->assertTrue(Photo::query()->get()->every(fn (Photo $photo) => $photo->publish_when_ready));
+    }
+
+    public function test_admin_store_supports_a_different_station_and_category_per_photo(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $stationA = Station::factory()->create(['name' => 'Bastille']);
+        $stationB = Station::factory()->create(['name' => 'Nation']);
+        $category = PhotoCategory::factory()->create();
+
+        $this->actingAs(User::factory()->create())->post(route('admin.photos.store'), [
+            'license' => 'all_rights_reserved',
+            'publish_mode' => 'draft',
+            'files' => [
+                UploadedFile::fake()->image('one.jpg', 800, 600),
+                UploadedFile::fake()->image('two.jpg', 800, 600),
+            ],
+            'photos' => [
+                ['station_id' => $stationA->id, 'photo_category_id' => $category->id, 'description' => 'Quai ligne 1'],
+                ['station_id' => $stationB->id, 'description' => 'Entrée principale'],
+            ],
+        ])->assertRedirect(route('admin.photos.index'));
+
+        $this->assertDatabaseHas('photos', ['station_id' => $stationA->id, 'photo_category_id' => $category->id, 'description' => 'Quai ligne 1']);
+        $this->assertDatabaseHas('photos', ['station_id' => $stationB->id, 'photo_category_id' => null, 'description' => 'Entrée principale']);
+    }
+
+    public function test_admin_store_rejects_a_photo_missing_its_station(): void
+    {
+        Storage::fake('local');
+
+        $this->actingAs(User::factory()->create())->post(route('admin.photos.store'), [
+            'license' => 'all_rights_reserved',
+            'publish_mode' => 'auto',
+            'files' => [
+                UploadedFile::fake()->image('one.jpg', 800, 600),
+            ],
+            'photos' => [
+                ['station_id' => ''],
+            ],
+        ])->assertSessionHasErrors('photos.0.station_id');
+
+        $this->assertDatabaseCount('photos', 0);
     }
 
     public function test_public_visibility_station_gallery_photo_page_and_hidden_states(): void

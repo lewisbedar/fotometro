@@ -2326,6 +2326,230 @@ window.fotometroPhotoForm = function fotometroPhotoForm(options) {
     };
 };
 
+window.fotometroPhotoImportWizard = function fotometroPhotoImportWizard(options) {
+    return {
+        step: 'drop',
+        photos: [],
+        stationsByLine: {},
+        accessesByStation: {},
+        lineStationsUrl: options.lineStationsUrl,
+        stationAccessesUrl: options.stationAccessesUrl,
+        detectStationUrl: options.detectStationUrl,
+        submitError: '',
+        nextId: 1,
+
+        filesAdded(fileList) {
+            Array.from(fileList || []).forEach((file) => this.addPhoto(file));
+
+            if (this.photos.length > 0) {
+                this.step = 'review';
+            }
+        },
+
+        addPhoto(file) {
+            const photo = {
+                id: this.nextId++,
+                file,
+                previewUrl: URL.createObjectURL(file),
+                lineId: '',
+                stationId: '',
+                accessId: '',
+                stations: [],
+                accesses: [],
+                loadingStations: false,
+                loadingAccesses: false,
+                categoryId: '',
+                description: '',
+                detectionStatus: 'Détection de la station en cours...',
+            };
+
+            this.photos.push(photo);
+            // Re-read the pushed entry so mutations flow through Alpine's reactive
+            // proxy (the raw `photo` object above bypasses it and never updates the DOM).
+            this.detectStationFor(this.photos[this.photos.length - 1]);
+        },
+
+        removePhoto(index) {
+            URL.revokeObjectURL(this.photos[index].previewUrl);
+            this.photos.splice(index, 1);
+
+            if (this.photos.length === 0) {
+                this.step = 'drop';
+            }
+        },
+
+        scrollToPhoto(id) {
+            document.getElementById(`photo-row-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        },
+
+        async detectStationFor(photo) {
+            try {
+                const body = new FormData();
+                body.append('file', photo.file);
+
+                const response = await fetch(this.detectStationUrl, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    },
+                    body,
+                });
+
+                if (! response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const payload = await response.json();
+
+                if (! payload.matched) {
+                    photo.detectionStatus = 'Aucune donnée de localisation exploitable, sélectionnez la station manuellement.';
+                    return;
+                }
+
+                photo.lineId = String(payload.line.id);
+                await this.loadStationsFor(photo, false);
+                photo.stationId = String(payload.station.id);
+                await this.loadAccessesFor(photo);
+                photo.detectionStatus = `Station détectée : ${payload.station.name} (≈ ${Math.round(payload.distance_meters)} m) — vérifiez avant de valider.`;
+            } catch (error) {
+                console.error('[fotometro] station detection failed', error);
+                photo.detectionStatus = 'Aucune donnée de localisation exploitable, sélectionnez la station manuellement.';
+            }
+        },
+
+        async lineChangedFor(photo) {
+            photo.stationId = '';
+            photo.accessId = '';
+            photo.stations = [];
+            photo.accesses = [];
+
+            if (photo.lineId) {
+                await this.loadStationsFor(photo, false);
+            }
+        },
+
+        async stationChangedFor(photo) {
+            photo.accessId = '';
+            photo.accesses = [];
+            await this.loadAccessesFor(photo);
+        },
+
+        async loadStationsFor(photo, keepSelection) {
+            if (! photo.lineId) {
+                photo.stations = [];
+                return;
+            }
+
+            if (this.stationsByLine[photo.lineId]) {
+                photo.stations = this.stationsByLine[photo.lineId];
+            } else {
+                photo.loadingStations = true;
+
+                try {
+                    const response = await fetch(this.lineStationsUrl.replace('__LINE__', encodeURIComponent(photo.lineId)), {
+                        headers: { Accept: 'application/json' },
+                    });
+
+                    if (! response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const payload = await response.json();
+                    const stations = Array.isArray(payload.data) ? payload.data : [];
+                    this.stationsByLine[photo.lineId] = stations;
+                    photo.stations = stations;
+                } catch (error) {
+                    console.error('[fotometro] station list loading failed', error);
+                    photo.stations = [];
+                } finally {
+                    photo.loadingStations = false;
+                }
+            }
+
+            if (! keepSelection || ! photo.stations.some((station) => String(station.id) === String(photo.stationId))) {
+                photo.stationId = '';
+                photo.accessId = '';
+                photo.accesses = [];
+            }
+        },
+
+        async loadAccessesFor(photo) {
+            if (! photo.stationId) {
+                photo.accesses = [];
+                return;
+            }
+
+            if (this.accessesByStation[photo.stationId]) {
+                photo.accesses = this.accessesByStation[photo.stationId];
+                return;
+            }
+
+            photo.loadingAccesses = true;
+
+            try {
+                const response = await fetch(this.stationAccessesUrl.replace('__STATION__', encodeURIComponent(photo.stationId)), {
+                    headers: { Accept: 'application/json' },
+                });
+
+                if (! response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const payload = await response.json();
+                const accesses = Array.isArray(payload.data) ? payload.data : [];
+                this.accessesByStation[photo.stationId] = accesses;
+                photo.accesses = accesses;
+            } catch (error) {
+                console.error('[fotometro] access list loading failed', error);
+                photo.accesses = [];
+            } finally {
+                photo.loadingAccesses = false;
+            }
+        },
+
+        duplicateLocation(sourceIndex) {
+            const source = this.photos[sourceIndex];
+
+            this.photos.forEach((photo, index) => {
+                if (index === sourceIndex) {
+                    return;
+                }
+
+                photo.lineId = source.lineId;
+                photo.stationId = source.stationId;
+                photo.accessId = source.accessId;
+                photo.stations = source.stations;
+                photo.accesses = source.accesses;
+            });
+        },
+
+        duplicateField(sourceIndex, field) {
+            const value = this.photos[sourceIndex][field];
+
+            this.photos.forEach((photo, index) => {
+                if (index !== sourceIndex) {
+                    photo[field] = value;
+                }
+            });
+        },
+
+        handleSubmit(event) {
+            if (this.photos.length === 0 || this.photos.some((photo) => ! photo.stationId)) {
+                event.preventDefault();
+                this.submitError = 'Chaque photo doit avoir une station sélectionnée.';
+                return;
+            }
+
+            this.submitError = '';
+
+            const dataTransfer = new DataTransfer();
+            this.photos.forEach((photo) => dataTransfer.items.add(photo.file));
+            this.$refs.filesInput.files = dataTransfer.files;
+        },
+    };
+};
+
 window.fotometroStationAccessMap = function fotometroStationAccessMap(options) {
     return {
         map: null,

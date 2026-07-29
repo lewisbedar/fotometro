@@ -36,7 +36,7 @@
                 <option value="">Sélectionner une ligne</option>
                 @foreach($lines as $line)
                     <option value="{{ $line->id }}">
-                        Ligne {{ $line->code }} - {{ $line->name }} ({{ $line->stations_count }} stations)
+                        Ligne {{ $line->code }} ({{ $line->stations_count }} stations)
                     </option>
                 @endforeach
             </select>
