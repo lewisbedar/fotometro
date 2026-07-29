@@ -10,7 +10,7 @@ return [
     'map' => [
         'basemap_driver' => $mapBasemapDriver,
         'style_url' => env('FOTOMETRO_MAP_STYLE_URL'),
-        'raster_url' => env('FOTOMETRO_MAP_RASTER_URL', 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+        'raster_url' => blank(env('FOTOMETRO_MAP_RASTER_URL')) ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png' : env('FOTOMETRO_MAP_RASTER_URL'),
         'raster_tile_size' => blank(env('FOTOMETRO_MAP_RASTER_TILE_SIZE')) ? 256 : (int) env('FOTOMETRO_MAP_RASTER_TILE_SIZE'),
         'attribution' => env('FOTOMETRO_MAP_ATTRIBUTION', '© OpenStreetMap contributors'),
         'cache_ttl' => (int) env('FOTOMETRO_MAP_CACHE_TTL', 300),

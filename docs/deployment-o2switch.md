@@ -23,6 +23,10 @@ npm run build
 
 `public/build/` (généré par Vite) **n'est pas suivi par Git** (`.gitignore` l'exclut, comme `node_modules/`). Après un `git clone`/`git pull` sur le serveur, il faut donc systématiquement envoyer ce dossier séparément par SFTP — il n'apparaît jamais tout seul sur le serveur. Déployez le code, `vendor/` si Composer n'est pas exécuté sur le serveur, et `public/build/`.
 
+`public/vendor/maplibre-gl/` (les fichiers `maplibre-gl-worker.mjs` et `maplibre-gl-shared.mjs`, copiés par le plugin Vite défini dans `vite.config.js`) est **également exclu de Git** (`.gitignore` là aussi) et doit être envoyé par SFTP au même titre que `public/build/`. Sans ce dossier, le worker MapLibre répond en 404 et la carte ne s'initialise pas du tout : ni fond de carte, ni tracés de lignes, ni stations n'apparaissent, avec une erreur "Erreur MapLibre" côté client.
+
+`public/.htaccess` (suivi par Git, donc déployé automatiquement par `git pull`) déclare `AddType application/javascript .mjs`. Sans cette déclaration, Apache sert les fichiers `.mjs` sans `Content-Type`, et le navigateur refuse d'exécuter le worker MapLibre comme module script (`Failed to load module script: ... non-JavaScript MIME type`) même si le fichier existe et répond en 200 — voir le dépannage en §11.
+
 ## 3. Racine du document
 
 Le domaine doit pointer vers le dossier `public/` de Laravel, jamais vers la racine du projet. Deux façons de faire sur cPanel :
@@ -136,6 +140,14 @@ Cette commande traite les photos en attente sans nécessiter de worker permanent
 - Un import de photo depuis l'admin aboutit à une photo visible publiquement.
 - `php artisan about` (en SSH) confirme l'environnement `production` et les bons drivers.
 - `/debug/database` retourne 404 (cette route de diagnostic est réservée à l'environnement local).
+- Le worker MapLibre répond en 200 avec le bon type MIME :
+
+  ```bash
+  curl -I https://votre-sous-domaine.fr/vendor/maplibre-gl/maplibre-gl-worker.mjs
+  ```
+
+  doit contenir `HTTP/... 200` et `Content-Type: application/javascript`. Un 404 signifie que `public/vendor/maplibre-gl/` n'a pas été envoyé (§2) ; un `Content-Type` vide ou `text/html` signifie que la déclaration MIME `.mjs` est absente du `.htaccess` servi (§11).
+- La carte affiche bien le fond raster, les tracés de lignes et les points de station (pas seulement le fond).
 
 ## 10. Mise à jour
 
@@ -149,7 +161,21 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 php artisan up
 ```
 
-Si des fichiers front (CSS/JS/Blade) ont changé, recompiler les assets **en local** (`npm run build`) et envoyer `public/build/` par SFTP avant ces commandes — voir §2.
+Si des fichiers front (CSS/JS/Blade) ont changé, recompiler les assets **en local** (`npm run build`) et envoyer `public/build/` et `public/vendor/maplibre-gl/` par SFTP avant ces commandes — voir §2.
+
+## 11. Dépannage MapLibre
+
+Si le fond de carte raster s'affiche mais qu'aucune station ni aucun tracé de ligne n'apparaît (aucune erreur visible à l'œil nu, mais la console affiche une erreur), le worker MapLibre est en cause. Diagnostic dans l'ordre :
+
+1. **Le fichier existe-t-il ?** Vérifier que `public/vendor/maplibre-gl/maplibre-gl-worker.mjs` a bien été envoyé sur le serveur (§2) — ce dossier n'est jamais créé par `git pull` seul.
+2. **Répond-il en 404 ?** `curl -I https://votre-sous-domaine.fr/vendor/maplibre-gl/maplibre-gl-worker.mjs`. Un 404 confirme le point 1.
+3. **Quel est son `Content-Type` ?** Si la réponse est un 200 mais sans `Content-Type` (ou `text/html`), Apache/o2switch ne connaît pas l'extension `.mjs`. Le navigateur refuse alors d'exécuter le fichier comme module script avec une erreur du type :
+   ```
+   Failed to load module script: The server responded with a non-JavaScript MIME type of "".
+   ```
+   Ce cas est piégeux : le fichier se charge (200), MapLibre déclenche bien son événement de chargement de carte, mais les sources GeoJSON (stations, tracés) ne sont jamais traitées puisque le worker qui les parse n'a pas pu s'exécuter.
+4. **Correctif** : `public/.htaccess` déclare `AddType application/javascript .mjs` (voir §2). Si ce fichier `.htaccess` n'est pas pris en compte par le serveur (`AllowOverride` désactivé, configuration Apache non standard), contacter le support o2switch pour faire ajouter le type MIME au niveau du vhost.
+5. Après correction, forcer un rechargement sans cache (Ctrl+F5) avant de re-tester : les navigateurs mettent en cache l'échec de chargement du module.
 
 ## Stockage
 
