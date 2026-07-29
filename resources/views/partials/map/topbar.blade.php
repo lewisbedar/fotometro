@@ -23,7 +23,6 @@
                 aria-controls="station-search-results"
                 autocomplete="off"
             >
-            <kbd class="hidden rounded border border-black/10 px-2 py-1 text-xs text-black/55 sm:block">/</kbd>
         </div>
 
         <div id="station-search-results" class="map-search-results" x-show="searchQuery.length >= 2 && activePanel === 'search'" x-cloak>

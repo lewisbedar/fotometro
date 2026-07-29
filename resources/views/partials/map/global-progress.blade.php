@@ -1,9 +1,18 @@
-<aside class="map-progress-panel map-glass" aria-labelledby="global-progress-title">
-    <button type="button" class="flex w-full items-center justify-between gap-3 text-left md:pointer-events-none" x-on:click="progressCollapsed = ! progressCollapsed" x-bind:aria-expanded="(! progressCollapsed).toString()">
-        <h2 id="global-progress-title" class="text-sm font-semibold">Progression globale</h2>
-        <span class="md:hidden" x-text="progressCollapsed ? '+' : '-'"></span>
+<aside class="map-progress-panel map-glass" :class="{ 'is-collapsed': progressCollapsed }" aria-labelledby="global-progress-title">
+    <button
+        type="button"
+        class="flex w-full items-center gap-2 text-left"
+        :class="progressCollapsed ? 'h-11 justify-center' : ''"
+        x-on:click="progressCollapsed = ! progressCollapsed"
+        aria-controls="global-progress-body"
+        aria-label="Afficher ou masquer la progression globale"
+        x-bind:aria-expanded="(! progressCollapsed).toString()"
+    >
+        <x-icons.data-usage class="h-5 w-5 shrink-0 text-black/60" />
+        <h2 id="global-progress-title" class="flex-1 text-sm font-semibold" x-show="! progressCollapsed">Progression globale</h2>
+        <x-icons.chevron-up class="h-4 w-4 shrink-0 text-black/45" x-show="! progressCollapsed" aria-hidden="true" />
     </button>
-    <div class="mt-4 grid grid-cols-[72px_1fr] gap-4" x-show="! progressCollapsed || ! isSmallScreen" x-cloak>
+    <div id="global-progress-body" class="mt-4 grid grid-cols-[72px_1fr] gap-4" x-show="! progressCollapsed" x-cloak>
         <div class="progress-ring" style="--progress: {{ $progressPercentage }}">
             <strong>{{ $progressPercentage }}</strong>
             <span>/100</span>

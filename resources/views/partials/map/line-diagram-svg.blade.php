@@ -9,7 +9,7 @@
                 aria-controls="line-diagram-body"
                 aria-label="Afficher ou masquer le plan de la ligne"
             >
-                <x-icons.line-diagram class="h-4 w-4 text-black/45" />
+                <span class="text-sm font-semibold text-black/60">Plan de la ligne</span>
                 <span class="line-diagram-chevron" :class="{ 'is-open': isLineDiagramOpen }" aria-hidden="true"></span>
             </button>
 
