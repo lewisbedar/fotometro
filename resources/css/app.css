@@ -837,10 +837,14 @@
 
     @media (max-width: 767px) {
         .fullscreen-map-topbar {
-            grid-template-columns: auto 1fr auto;
+            grid-template-columns: auto minmax(0, 1fr) auto;
             gap: 0.5rem;
             left: 0.75rem;
             right: 0.75rem;
+        }
+
+        .map-search-block {
+            min-width: 0;
         }
 
         .map-logo-block {
@@ -901,6 +905,11 @@
 
         .maplibregl-ctrl-top-right {
             top: 5rem;
+        }
+
+        .lightbox-close {
+            height: 2.75rem;
+            width: 2.75rem;
         }
     }
 

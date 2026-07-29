@@ -1,26 +1,66 @@
-<x-layouts.app title="Photo admin - fotométro">
-    <article class="space-y-5 rounded-lg bg-white p-6 shadow-sm ring-1 ring-black/5">
+<x-layouts.app title="{{ $photo->title ?: $photo->original_filename }} - fotométro" :full-width="true">
+    <div class="space-y-6 rounded-lg bg-white p-6 shadow-sm ring-1 ring-black/5">
         @if (session('status')) <p class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</p> @endif
+        @if ($errors->any()) <div class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ $errors->first() }}</div> @endif
+
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold">{{ $photo->title ?: $photo->original_filename }}</h1>
-                <p class="text-sm text-black/60">{{ $photo->station->name }} · {{ $photo->processing_status->label() }}</p>
+                <p class="text-sm text-black/60">{{ $photo->station->name }} · {{ $photo->adminStatusLabel() }}</p>
                 @if ($photo->station->cover_photo_id === $photo->id)
                     <span class="mt-1 inline-block rounded-full bg-black px-2 py-0.5 text-xs font-semibold text-white">Photo de couverture</span>
                 @endif
             </div>
             <div class="flex flex-wrap gap-2">
-                <a class="rounded-md border border-black/10 px-3 py-2 font-semibold" href="{{ route('admin.photos.edit', $photo) }}">Modifier</a>
-                <form method="POST" action="{{ route('admin.photos.process', $photo) }}">@csrf<button class="rounded-md border border-black/10 px-3 py-2 font-semibold">Traiter</button></form>
+                <button form="process-photo" class="flex items-center gap-2 rounded-md border border-black/10 px-3 py-2 font-semibold"><x-icons.refresh class="h-4 w-4" /> Traiter</button>
                 @if ($photo->station->cover_photo_id === $photo->id)
-                    <form method="POST" action="{{ route('admin.photos.unset-cover', $photo) }}">@csrf @method('DELETE')<button class="rounded-md border border-black/10 px-3 py-2 font-semibold">Retirer la couverture</button></form>
+                    <button form="unset-cover-photo" class="flex items-center gap-2 rounded-md border border-black/10 px-3 py-2 font-semibold"><x-icons.star class="h-4 w-4" /> Retirer la couverture</button>
                 @elseif ($photo->is_published && $photo->processing_status === \App\Enums\PhotoProcessingStatus::Ready)
-                    <form method="POST" action="{{ route('admin.photos.set-cover', $photo) }}">@csrf<button class="rounded-md border border-black/10 px-3 py-2 font-semibold">Définir comme couverture</button></form>
+                    <button form="set-cover-photo" class="flex items-center gap-2 rounded-md border border-black/10 px-3 py-2 font-semibold"><x-icons.star class="h-4 w-4" /> Définir comme couverture</button>
                 @endif
-                <form method="POST" action="{{ route('admin.photos.destroy', $photo) }}" onsubmit="return confirm('Supprimer cette photo ?')">@csrf @method('DELETE')<button class="rounded-md bg-red-700 px-3 py-2 font-semibold text-white">Supprimer</button></form>
+                <button form="delete-photo" class="flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 font-semibold text-white" onclick="return confirm('Supprimer cette photo ?')"><x-icons.trash class="h-4 w-4" /> Supprimer</button>
             </div>
         </div>
-        @if($photo->web_url)<img class="max-h-[70vh] rounded-lg object-contain" src="{{ $photo->web_url }}" alt="">@endif
-        <dl class="grid gap-4 text-sm sm:grid-cols-2"><div><dt class="text-black/55">Copyright</dt><dd>{{ $photo->copyright_notice }}</dd></div><div><dt class="text-black/55">Original privé</dt><dd>{{ $photo->original_path }}</dd></div><div><dt class="text-black/55">Erreur</dt><dd>{{ $photo->processing_error ?: '-' }}</dd></div></dl>
-    </article>
+
+        @if ($photo->processing_error)
+            <p class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ $photo->processing_error }}</p>
+        @endif
+
+        <div class="grid gap-6 lg:grid-cols-[1fr_420px]">
+            <div class="lg:sticky lg:top-6 lg:self-start">
+                @if ($photo->web_url)
+                    <img class="max-h-[75vh] w-full rounded-lg object-contain" src="{{ $photo->web_url }}" alt="">
+                @else
+                    <div class="flex h-64 w-full items-center justify-center rounded-lg bg-black/5 text-sm text-black/40">Pas d’aperçu</div>
+                @endif
+            </div>
+
+            <form method="POST" action="{{ route('admin.photos.update', $photo) }}" class="space-y-5">
+                @csrf @method('PUT')
+                <label class="block text-sm font-semibold">Titre <input name="title" value="{{ old('title', $photo->title) }}" class="mt-1 w-full rounded-md border border-black/15 p-2"></label>
+                <label class="block text-sm font-semibold">Description <textarea name="description" class="mt-1 w-full rounded-md border border-black/15 p-2">{{ old('description', $photo->description) }}</textarea></label>
+                @include('admin.photos.partials.location-selector')
+                <label class="block text-sm font-semibold">Catégorie <select name="photo_category_id" class="mt-1 w-full rounded-md border border-black/15 p-2"><option value="">Aucune</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected(old('photo_category_id', $photo->photo_category_id) == $category->id)>{{ $category->name }}</option>@endforeach</select></label>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="block text-sm font-semibold">Date <input type="datetime-local" name="taken_at" value="{{ old('taken_at', $photo->taken_at?->format('Y-m-d\\TH:i')) }}" class="mt-1 w-full rounded-md border border-black/15 p-2"></label>
+                    <label class="block text-sm font-semibold">Ordre <input type="number" min="0" name="sort_order" value="{{ old('sort_order', $photo->sort_order) }}" class="mt-1 w-full rounded-md border border-black/15 p-2"></label>
+                </div>
+                <label class="block text-sm font-semibold">Titulaire <input name="copyright_holder" value="{{ old('copyright_holder', $photo->copyright_holder) }}" class="mt-1 w-full rounded-md border border-black/15 p-2"></label>
+                <label class="block text-sm font-semibold">Mention <input name="copyright_notice" value="{{ old('copyright_notice', $photo->copyright_notice) }}" class="mt-1 w-full rounded-md border border-black/15 p-2"></label>
+                <label class="block text-sm font-semibold">Licence <select name="license" class="mt-1 w-full rounded-md border border-black/15 p-2">@foreach($licenses as $license)<option value="{{ $license->value }}" @selected(old('license', $photo->license->value) === $license->value)>{{ $license->label() }}</option>@endforeach</select></label>
+                <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="is_featured" value="1" @checked(old('is_featured', $photo->is_featured))> Mise en avant</label>
+                <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="publish_when_ready" value="1" @checked(old('publish_when_ready', $photo->publish_when_ready))> Publier automatiquement quand le traitement réussit</label>
+                <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="is_published" value="1" @checked(old('is_published', $photo->is_published))> Publiée</label>
+                <button class="rounded-md bg-black px-4 py-2 font-semibold text-white">Enregistrer</button>
+            </form>
+        </div>
+    </div>
+
+    <form id="process-photo" method="POST" action="{{ route('admin.photos.process', $photo) }}">@csrf</form>
+    @if ($photo->station->cover_photo_id === $photo->id)
+        <form id="unset-cover-photo" method="POST" action="{{ route('admin.photos.unset-cover', $photo) }}">@csrf @method('DELETE')</form>
+    @elseif ($photo->is_published && $photo->processing_status === \App\Enums\PhotoProcessingStatus::Ready)
+        <form id="set-cover-photo" method="POST" action="{{ route('admin.photos.set-cover', $photo) }}">@csrf</form>
+    @endif
+    <form id="delete-photo" method="POST" action="{{ route('admin.photos.destroy', $photo) }}">@csrf @method('DELETE')</form>
 </x-layouts.app>

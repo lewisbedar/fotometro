@@ -45,7 +45,14 @@
         @include('partials.map.about-modal')
         @include('partials.map.beta-notice-modal')
 
-        <button type="button" class="map-about-link map-glass" x-on:click="openAbout()" x-bind:aria-expanded="isAboutOpen.toString()" aria-controls="map-about-title">
+        <button
+            type="button"
+            class="map-about-link map-glass"
+            x-on:click="openAbout()"
+            x-bind:aria-expanded="isAboutOpen.toString()"
+            aria-controls="map-about-title"
+            x-show="! isSmallScreen || (! isFiltersOpen && ! isLinesOpen && ! selectedStation && ! selectedLine)"
+        >
             À propos
         </button>
 

@@ -29,7 +29,7 @@
                 <h2 class="text-xl font-semibold">Stations</h2>
                 <ol class="mt-5 space-y-3">
                     @foreach ($line->stations as $station)
-                        <li class="flex items-center justify-between gap-4 rounded-md border border-black/10 p-3">
+                        <li class="flex flex-wrap items-center justify-between gap-4 rounded-md border border-black/10 p-3">
                             <div>
                                 <a href="{{ route('stations.show', $station) }}" class="font-semibold hover:underline">{{ $station->name }}</a>
                                 <p class="mt-1 text-sm text-black/60">{{ $station->coverage_status->description() }} · {{ $station->coverage_percentage }} %</p>

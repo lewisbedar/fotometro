@@ -51,7 +51,7 @@
                 @endunless
                 <details class="relative">
                     <summary class="cursor-pointer list-none rounded-md border border-black/10 px-2 py-1 text-xs font-semibold text-black/60 hover:bg-black hover:text-white">Détail</summary>
-                    <div class="absolute right-0 z-10 mt-2 w-80 space-y-3 rounded-lg bg-white p-4 shadow-lg ring-1 ring-black/10">
+                    <div class="absolute right-0 z-10 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-3 rounded-lg bg-white p-4 shadow-lg ring-1 ring-black/10">
                         @foreach ($coverageSummary['category_breakdown'] as $axis)
                             <div>
                                 <div class="flex justify-between gap-4 text-xs">
@@ -98,7 +98,7 @@
                                 @if ($photo->web_url)
                                     <img src="{{ $photo->web_url }}" alt="{{ $photo->publicLabel() }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
                                 @endif
-                                <span class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-sm font-medium text-white opacity-0 transition group-hover:opacity-100">
+                                <span class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-sm font-medium text-white opacity-100 transition md:opacity-0 md:group-hover:opacity-100">
                                     {{ $photo->publicLabel() }}
                                 </span>
                             </x-photo-link>

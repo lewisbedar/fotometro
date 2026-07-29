@@ -308,7 +308,7 @@ class PhotoCatalogTest extends TestCase
             ->assertDontSee('<option value="'.$station->id.'">'.$station->name.'</option>', false);
 
         $this->actingAs($user)
-            ->get(route('admin.photos.edit', $photo))
+            ->get(route('admin.photos.show', $photo))
             ->assertOk()
             ->assertSee('initialLineId', false)
             ->assertSee('initialStationId', false)
