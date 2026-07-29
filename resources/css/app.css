@@ -257,6 +257,12 @@
         left: 1rem;
         width: min(19rem, calc(100vw - 2rem));
         padding: 1rem;
+        transition: width 150ms ease, padding 150ms ease;
+    }
+
+    .map-progress-panel.is-collapsed {
+        width: 2.75rem;
+        padding: 0;
     }
 
     .progress-ring {
@@ -314,10 +320,10 @@
     }
 
     .map-filter-row {
-        min-height: 2.75rem;
+        min-height: 2.25rem;
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 0.5rem;
     }
 
     .line-select-button {

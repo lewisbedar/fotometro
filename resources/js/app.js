@@ -148,7 +148,7 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
         isFiltersOpen: false,
         isLinesOpen: false,
         isLineDiagramOpen: false,
-        progressCollapsed: false,
+        progressCollapsed: true,
         showStations: true,
         showLineTracks: true,
         showConnections: true,
@@ -831,6 +831,11 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
 
             if (this.isLineDiagramOpen) {
                 this.renderSelectedLineDiagram();
+            } else {
+                // sizeDiagramPanelToContent() sets an inline width sized to the last
+                // diagram's content; without clearing it, the collapsed handle bar
+                // keeps that width instead of returning to the CSS default.
+                document.querySelector('.line-diagram-panel')?.style.removeProperty('width');
             }
         },
 

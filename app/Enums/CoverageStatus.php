@@ -24,10 +24,10 @@ enum CoverageStatus: string
     public function description(): string
     {
         return match ($this) {
-            self::NotStarted => 'Station non photographiée',
+            self::NotStarted => 'Non photographiée',
             self::Planned => 'Sortie prévue',
             self::InProgress => 'Couverture commencée',
-            self::Documented => 'Station documentée',
+            self::Documented => 'Documentée',
             self::Complete => 'Couverture complète',
         };
     }
