@@ -11,7 +11,7 @@
                 <p class="text-sm font-semibold uppercase tracking-[0.16em] text-black/55">À propos</p>
                 <h2 id="map-about-title" class="mt-1 text-2xl font-semibold">fotométro</h2>
             </div>
-            <button type="button" class="map-icon-button" x-ref="aboutClose" x-on:click="closeAbout()" aria-label="Fermer la fenêtre À propos">×</button>
+            <button type="button" class="map-icon-button inline-flex items-center justify-center" x-ref="aboutClose" x-on:click="closeAbout()" aria-label="Fermer la fenêtre À propos"><x-icons.close class="h-4 w-4" /></button>
         </div>
 
         <div class="mt-5 space-y-4 text-sm leading-6 text-black/70">

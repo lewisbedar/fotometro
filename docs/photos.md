@@ -28,6 +28,14 @@ Une petite carte MapLibre reprend la configuration raster existante. Elle affich
 
 La limite par fichier vient de `FOTOMETRO_PHOTO_MAX_UPLOAD_MB`. La limite de lot vient de `FOTOMETRO_PHOTO_BATCH_LIMIT`.
 
+## Détection automatique de la station (GPS EXIF)
+
+Dès qu'un fichier est choisi sur la page d'import, le front essaie de détecter la station via les coordonnées GPS EXIF (jusqu'à 5 fichiers du lot, dans l'ordre, arrêt au premier succès) en appelant `POST /admin/photos/detect-station`. Cet endpoint réutilise `ExifReader` pour lire le GPS du fichier, puis `App\Services\Stations\NearestStationLocator` pour trouver la station active la plus proche par distance Haversine.
+
+Si une station est trouvée dans le rayon `FOTOMETRO_PHOTO_EXIF_MATCH_RADIUS_METERS` (200 m par défaut), la Ligne et la Station sont présélectionnées automatiquement, avec la distance approximative affichée à l'admin. L'accès reste toujours à choisir manuellement : un point GPS de station ne permet pas de distinguer entre ses différents accès.
+
+En l'absence de GPS exploitable (typique des photos de quai souterraines) ou si aucune station n'est trouvée dans le rayon, la sélection reste entièrement manuelle, comme avant cette fonctionnalité — la détection ne bloque jamais l'import.
+
 ## Workflow simplifié
 
 Par défaut, l’administrateur choisit une station, ajoute les fichiers, puis laisse activée l’option `Publier automatiquement une fois les photos prêtes`.

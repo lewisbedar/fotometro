@@ -60,27 +60,37 @@ class PhotoController extends Controller
     public function store(Request $request, PhotoImporter $importer): RedirectResponse
     {
         $data = $request->validate([
-            'station_id' => ['required', 'exists:stations,id'],
-            'station_access_id' => ['nullable', 'exists:station_accesses,id'],
-            'photo_category_id' => ['nullable', 'exists:photo_categories,id'],
-            'copyright_holder' => ['nullable', 'string', 'max:255'],
-            'copyright_notice' => ['nullable', 'string', 'max:255'],
             'credit_line' => ['nullable', 'string', 'max:255'],
             'license' => ['required', 'in:'.collect(PhotoLicense::cases())->pluck('value')->implode(',')],
             'usage_terms' => ['nullable', 'string'],
             'publish_mode' => ['required', 'in:auto,draft'],
             'files' => ['required', 'array', 'max:'.config('fotometro.photos.batch_limit', 20)],
             'files.*' => ['required', 'file'],
+            'photos' => ['required', 'array', 'size:'.count($request->file('files', []))],
+            'photos.*.station_id' => ['required', 'exists:stations,id'],
+            'photos.*.station_access_id' => ['nullable', 'exists:station_accesses,id'],
+            'photos.*.photo_category_id' => ['nullable', 'exists:photo_categories,id'],
+            'photos.*.description' => ['nullable', 'string'],
         ]);
         $data['publish_when_ready'] = $data['publish_mode'] === 'auto';
+
+        // The titulaire is always the uploading admin, never a free-text field; the copyright
+        // notice is derived from the chosen license rather than typed manually (see PhotoLicense::copyrightNotice).
+        $holder = $request->user()->name;
+        $license = PhotoLicense::from($data['license']);
+        $shared = collect($data)->except(['files', 'photos'])->all();
+        $shared['copyright_holder'] = $holder;
+        $shared['copyright_notice'] = $license->copyrightNotice($holder);
 
         $created = 0;
         $rejected = 0;
         $createdIds = [];
 
-        foreach ($request->file('files', []) as $file) {
+        foreach ($request->file('files', []) as $index => $file) {
+            $perPhoto = $data['photos'][$index] ?? [];
+
             try {
-                $photo = $importer->import($file, $data);
+                $photo = $importer->import($file, [...$shared, ...$perPhoto]);
                 $createdIds[] = $photo->id;
                 $created++;
             } catch (\Throwable) {

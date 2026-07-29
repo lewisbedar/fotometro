@@ -6,10 +6,54 @@ use App\Http\Controllers\Controller;
 use App\Models\Line;
 use App\Models\Station;
 use App\Models\StationAccess;
+use App\Services\Photos\ExifReader;
+use App\Services\Stations\NearestStationLocator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class PhotoSelectionApiController extends Controller
 {
+    public function detectStation(Request $request, ExifReader $exif, NearestStationLocator $locator): JsonResponse
+    {
+        $data = $request->validate([
+            'file' => [
+                'required',
+                'file',
+                'mimes:jpg,jpeg,png,webp',
+                'max:'.((int) config('fotometro.photos.max_upload_mb', 40) * 1024),
+            ],
+        ]);
+
+        $metadata = $exif->read($data['file']->getRealPath());
+        $latitude = $metadata['latitude'] ?? null;
+        $longitude = $metadata['longitude'] ?? null;
+
+        if ($latitude === null || $longitude === null) {
+            return response()->json(['matched' => false]);
+        }
+
+        $match = $locator->locate($latitude, $longitude);
+
+        if ($match === null) {
+            return response()->json(['matched' => false]);
+        }
+
+        $station = $match['station'];
+        $station->loadMissing(['lines' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')]);
+        $line = $station->lines->first();
+
+        if ($line === null) {
+            return response()->json(['matched' => false]);
+        }
+
+        return response()->json([
+            'matched' => true,
+            'distance_meters' => $match['distance_meters'],
+            'station' => ['id' => $station->id, 'name' => $station->name],
+            'line' => ['id' => $line->id, 'name' => $line->name],
+        ]);
+    }
+
     public function stations(Line $line): JsonResponse
     {
         $line->load(['stations' => fn ($query) => $query
@@ -60,6 +104,7 @@ class PhotoSelectionApiController extends Controller
                 ->map(fn (StationAccess $access, int $index) => [
                     'id' => $access->id,
                     'name' => $access->displayName($index),
+                    'number' => $access->number,
                     'reference' => $access->reference,
                     'latitude' => $access->latitude !== null ? (float) $access->latitude : null,
                     'longitude' => $access->longitude !== null ? (float) $access->longitude : null,

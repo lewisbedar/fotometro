@@ -1,7 +1,7 @@
 <aside id="lines-panel" class="map-lines-panel map-glass" x-show="isLinesOpen" x-transition x-cloak aria-labelledby="lines-title">
     <div class="flex items-center justify-between">
         <h2 id="lines-title" class="text-base font-semibold">Lignes</h2>
-        <button type="button" class="map-icon-button" x-on:click="isLinesOpen = false" aria-label="Fermer les lignes">×</button>
+        <button type="button" class="map-icon-button inline-flex items-center justify-center" x-on:click="isLinesOpen = false" aria-label="Fermer les lignes"><x-icons.close class="h-4 w-4" /></button>
     </div>
     <div class="mt-4 grid gap-2">
         <template x-for="line in mapData.lines" :key="line.id">

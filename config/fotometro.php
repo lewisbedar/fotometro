@@ -25,6 +25,7 @@ return [
         'disk' => env('FOTOMETRO_PHOTO_DISK', 'local'),
         'max_upload_mb' => (int) env('FOTOMETRO_PHOTO_MAX_UPLOAD_MB', 40),
         'batch_limit' => (int) env('FOTOMETRO_PHOTO_BATCH_LIMIT', 20),
+        'exif_station_match_radius_meters' => (float) env('FOTOMETRO_PHOTO_EXIF_MATCH_RADIUS_METERS', 200),
         'manual_process_limit' => (int) env('FOTOMETRO_PHOTO_MANUAL_PROCESS_LIMIT', 5),
         'process_synchronously' => filter_var(env('FOTOMETRO_PHOTO_PROCESS_SYNCHRONOUSLY', false), FILTER_VALIDATE_BOOL),
         'web_max_width' => (int) env('FOTOMETRO_PHOTO_WEB_MAX_WIDTH', 2200),
