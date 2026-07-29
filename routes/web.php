@@ -72,10 +72,23 @@ Route::middleware('guest')->group(function (): void {
 });
 
 Route::middleware('auth')->group(function (): void {
-    Route::get('/admin', DashboardController::class)->name('admin.dashboard');
+    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+});
+
+// Shared by every approved account regardless of role — currently just the
+// lookup endpoints the photo forms need; the user upload flow and profile
+// pages (chunk 3/4 of the accounts feature) will join this group too.
+Route::middleware(['auth', 'approved'])->group(function (): void {
     Route::get('/admin/api/lines/{line}/stations', [PhotoSelectionApiController::class, 'stations'])->name('admin.api.lines.stations');
     Route::get('/admin/api/stations/{station}/accesses', [PhotoSelectionApiController::class, 'accesses'])->name('admin.api.stations.accesses');
     Route::post('/admin/photos/detect-station', [PhotoSelectionApiController::class, 'detectStation'])->name('admin.api.photos.detect-station');
+});
+
+Route::middleware(['auth', 'approved', 'role:admin,moderator'])->group(function (): void {
+    Route::get('/admin', DashboardController::class)->name('admin.dashboard');
+});
+
+Route::middleware(['auth', 'approved', 'role:admin'])->group(function (): void {
     Route::resource('/admin/photo-categories', PhotoCategoryController::class)
         ->except(['show', 'destroy'])
         ->names('admin.photo-categories');
@@ -89,5 +102,4 @@ Route::middleware('auth')->group(function (): void {
     Route::resource('/admin/photos', PhotoController::class)
         ->except(['create', 'edit'])
         ->names('admin.photos');
-    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });
