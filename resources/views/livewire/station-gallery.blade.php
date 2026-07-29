@@ -57,7 +57,7 @@
                 @endif
                 <span class="block p-3">
                     <span class="block truncate text-sm font-semibold">{{ $photo->publicLabel() }}</span>
-                    <span class="mt-1 block text-xs text-black/55">{{ $photo->category?->name ?: 'Sans catégorie' }}</span>
+                    <span class="mt-1 block text-xs text-black/55">{{ $photo->categories->isNotEmpty() ? $photo->categories->pluck('name')->join(' · ') : 'Sans catégorie' }}</span>
                 </span>
             </x-photo-link>
         @empty

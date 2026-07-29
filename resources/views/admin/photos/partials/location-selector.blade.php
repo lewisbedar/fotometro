@@ -35,8 +35,8 @@
             >
                 <option value="">Sélectionner une ligne</option>
                 @foreach($lines as $line)
-                    <option value="{{ $line->id }}">
-                        Ligne {{ $line->code }} ({{ $line->stations_count }} stations)
+                    <option value="{{ $line->id }}" style="background-color: {{ $line->color }}22;">
+                        Ligne {{ $line->code }}
                     </option>
                 @endforeach
             </select>

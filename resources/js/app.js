@@ -2378,7 +2378,7 @@ window.fotometroPhotoImportWizard = function fotometroPhotoImportWizard(options)
                 accesses: [],
                 loadingStations: false,
                 loadingAccesses: false,
-                categoryId: '',
+                categoryIds: [],
                 description: '',
                 detectionStatus: 'Détection de la station en cours...',
             };
@@ -2549,7 +2549,7 @@ window.fotometroPhotoImportWizard = function fotometroPhotoImportWizard(options)
 
             this.photos.forEach((photo, index) => {
                 if (index !== sourceIndex) {
-                    photo[field] = value;
+                    photo[field] = Array.isArray(value) ? [...value] : value;
                 }
             });
         },

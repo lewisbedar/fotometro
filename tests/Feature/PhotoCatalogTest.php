@@ -36,14 +36,14 @@ class PhotoCatalogTest extends TestCase
         $station->accesses()->attach($access->id);
         $parent = PhotoCategory::factory()->create(['name' => 'Interieur']);
         $child = PhotoCategory::factory()->create(['parent_id' => $parent->id, 'name' => 'Quai']);
-        $photo = Photo::factory()->create([
+        $photo = Photo::factory()->withCategories($child)->create([
             'station_id' => $station->id,
             'station_access_id' => $access->id,
-            'photo_category_id' => $child->id,
         ]);
 
         $this->assertTrue($photo->station->is($station));
         $this->assertTrue($photo->stationAccess->is($access));
+        $this->assertTrue($photo->categories->pluck('id')->contains($child->id));
         $this->assertTrue($child->parent->is($parent));
         $this->assertTrue($parent->children->contains($child));
     }
@@ -421,13 +421,18 @@ class PhotoCatalogTest extends TestCase
                 UploadedFile::fake()->image('two.jpg', 800, 600),
             ],
             'photos' => [
-                ['station_id' => $stationA->id, 'photo_category_id' => $category->id, 'description' => 'Quai ligne 1'],
+                ['station_id' => $stationA->id, 'photo_category_ids' => [$category->id], 'description' => 'Quai ligne 1'],
                 ['station_id' => $stationB->id, 'description' => 'Entrée principale'],
             ],
         ])->assertRedirect(route('admin.photos.index'));
 
-        $this->assertDatabaseHas('photos', ['station_id' => $stationA->id, 'photo_category_id' => $category->id, 'description' => 'Quai ligne 1']);
-        $this->assertDatabaseHas('photos', ['station_id' => $stationB->id, 'photo_category_id' => null, 'description' => 'Entrée principale']);
+        $photoA = Photo::query()->where('station_id', $stationA->id)->firstOrFail();
+        $photoB = Photo::query()->where('station_id', $stationB->id)->firstOrFail();
+
+        $this->assertDatabaseHas('photos', ['station_id' => $stationA->id, 'description' => 'Quai ligne 1']);
+        $this->assertTrue($photoA->categories->pluck('id')->contains($category->id));
+        $this->assertDatabaseHas('photos', ['station_id' => $stationB->id, 'description' => 'Entrée principale']);
+        $this->assertTrue($photoB->categories->isEmpty());
     }
 
     public function test_admin_store_rejects_a_photo_missing_its_station(): void
@@ -502,18 +507,16 @@ class PhotoCatalogTest extends TestCase
             'is_active' => true,
         ]);
         $station->accesses()->attach($access->id);
-        $featured = Photo::factory()->create([
+        $featured = Photo::factory()->withCategories($child)->create([
             'station_id' => $station->id,
             'station_access_id' => $access->id,
-            'photo_category_id' => $child->id,
             'title' => 'Entrée Rivoli',
             'is_featured' => true,
             'sort_order' => 2,
             'taken_at' => now()->subDay(),
         ]);
-        Photo::factory()->create([
+        Photo::factory()->withCategories($otherRoot)->create([
             'station_id' => $station->id,
-            'photo_category_id' => $otherRoot->id,
             'title' => 'Quai central',
             'sort_order' => 3,
         ]);
@@ -549,8 +552,8 @@ class PhotoCatalogTest extends TestCase
         $access = StationAccess::query()->create(['external_id' => 'ACCESS:REP:1', 'name' => 'Accès Temple', 'is_active' => true]);
         $station->accesses()->attach($access->id);
 
-        Photo::factory()->create(['station_id' => $station->id, 'station_access_id' => $access->id, 'photo_category_id' => $child->id, 'title' => 'Photo entrée']);
-        Photo::factory()->create(['station_id' => $station->id, 'photo_category_id' => $other->id, 'title' => 'Photo panneau']);
+        Photo::factory()->withCategories($child)->create(['station_id' => $station->id, 'station_access_id' => $access->id, 'title' => 'Photo entrée']);
+        Photo::factory()->withCategories($other)->create(['station_id' => $station->id, 'title' => 'Photo panneau']);
 
         // Both photos always appear in the unfiltered hero mosaic (as the image
         // alt text, the hover caption, and the lightbox data-title attribute,
@@ -698,7 +701,7 @@ class PhotoCatalogTest extends TestCase
         $this->assertSame(50, $normal->fresh()->coverage_percentage);
 
         $quai = PhotoCategory::factory()->create(['slug' => 'interieur-quai']);
-        Photo::factory()->create(['station_id' => $normal->id, 'photo_category_id' => $quai->id]);
+        Photo::factory()->withCategories($quai)->create(['station_id' => $normal->id]);
         app(StationCoverageUpdater::class)->update($normal);
 
         $this->assertSame(CoverageStatus::Documented, $normal->fresh()->coverage_status);
@@ -719,9 +722,8 @@ class PhotoCatalogTest extends TestCase
         StationAccess::query()->create(['external_id' => 'ACCESS:COVERAGE:2', 'is_active' => true])->stations()->attach($station->id);
         $station->accesses()->attach($access->id);
 
-        Photo::factory()->create([
+        Photo::factory()->withCategories($exteriorCovered)->create([
             'station_id' => $station->id,
-            'photo_category_id' => $exteriorCovered->id,
             'station_access_id' => $access->id,
         ]);
 

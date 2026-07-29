@@ -10,13 +10,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 #[Fillable([
     'station_id',
     'station_access_id',
-    'photo_category_id',
     'title',
     'slug',
     'description',
@@ -78,7 +78,7 @@ class Photo extends Model
     public function publicLabel(): string
     {
         return $this->title
-            ?: $this->category?->name
+            ?: $this->categories->first()?->name
             ?: 'Photographie de '.$this->station?->name;
     }
 
@@ -104,9 +104,9 @@ class Photo extends Model
         return $this->belongsTo(StationAccess::class);
     }
 
-    public function category(): BelongsTo
+    public function categories(): BelongsToMany
     {
-        return $this->belongsTo(PhotoCategory::class, 'photo_category_id');
+        return $this->belongsToMany(PhotoCategory::class);
     }
 
     public function scopePubliclyVisible(Builder $query): Builder

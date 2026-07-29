@@ -51,7 +51,7 @@ class PublicStationController extends Controller
         return Photo::query()
             ->publiclyVisible()
             ->where('station_id', $station->id)
-            ->with(['category.parent', 'stationAccess'])
+            ->with(['categories.parent', 'stationAccess'])
             ->orderBy('sort_order')
             ->orderByRaw('taken_at IS NULL')
             ->orderBy('taken_at')
@@ -76,14 +76,14 @@ class PublicStationController extends Controller
     private function featuredPhotos(Station $station, int $limit = 4): Collection
     {
         $cover = $station->cover_photo_id
-            ? Photo::query()->publiclyVisible()->whereKey($station->cover_photo_id)->with(['category.parent', 'stationAccess'])->first()
+            ? Photo::query()->publiclyVisible()->whereKey($station->cover_photo_id)->with(['categories.parent', 'stationAccess'])->first()
             : null;
 
         $rest = Photo::query()
             ->publiclyVisible()
             ->where('station_id', $station->id)
             ->when($cover, fn ($query) => $query->whereKeyNot($cover->id))
-            ->with(['category.parent', 'stationAccess'])
+            ->with(['categories.parent', 'stationAccess'])
             ->orderByDesc('is_featured')
             ->orderBy('sort_order')
             ->orderByRaw('taken_at IS NULL')

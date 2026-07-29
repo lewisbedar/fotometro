@@ -25,7 +25,9 @@ class StationPhotoCoverageService
 
         return [
             'total_photos' => (clone $publicPhotos)->count(),
-            'represented_categories' => (clone $publicPhotos)->whereNotNull('photo_category_id')->distinct('photo_category_id')->count('photo_category_id'),
+            'represented_categories' => PhotoCategory::query()
+                ->whereHas('photos', fn ($query) => $query->publiclyVisible()->where('station_id', $station->id))
+                ->count(),
             'total_accesses' => $accessBreakdown['total'],
             'photographed_accesses' => $accessBreakdown['covered'],
             'last_photo_at' => $lastPhoto?->taken_at ?? $lastPhoto?->published_at ?? $lastPhoto?->created_at,
@@ -54,7 +56,7 @@ class StationPhotoCoverageService
         $platformsPhotographed = Photo::query()
             ->publiclyVisible()
             ->where('station_id', $station->id)
-            ->whereHas('category', fn ($query) => $query->where('slug', 'interieur-quai'))
+            ->whereHas('categories', fn ($query) => $query->where('slug', 'interieur-quai'))
             ->exists();
 
         // A station without any registered access isn't penalized for it (that
@@ -85,12 +87,9 @@ class StationPhotoCoverageService
      */
     public function categoryBreakdown(Station $station): Collection
     {
-        $coveredChildIds = Photo::query()
-            ->publiclyVisible()
-            ->where('station_id', $station->id)
-            ->whereNotNull('photo_category_id')
-            ->distinct()
-            ->pluck('photo_category_id');
+        $coveredChildIds = PhotoCategory::query()
+            ->whereHas('photos', fn ($query) => $query->publiclyVisible()->where('station_id', $station->id))
+            ->pluck('id');
 
         return PhotoCategory::query()
             ->whereNull('parent_id')

@@ -63,7 +63,7 @@
                         </a>
                         <div class="space-y-2 p-3">
                             <p class="truncate text-sm font-semibold" title="{{ $photo->title ?: $photo->original_filename }}">{{ $photo->title ?: $photo->original_filename }}</p>
-                            <p class="truncate text-xs text-black/55">{{ $photo->station?->name }}{{ $photo->category ? ' · '.$photo->category->name : '' }}</p>
+                            <p class="truncate text-xs text-black/55">{{ $photo->station?->name }}{{ $photo->categories->isNotEmpty() ? ' · '.$photo->categories->pluck('name')->join(', ') : '' }}</p>
                             <span class="inline-block rounded-full bg-black/5 px-2 py-1 text-xs font-semibold">{{ $photo->adminStatusLabel() }}</span>
                             <div class="flex flex-wrap items-center gap-1 pt-1">
                                 <a href="{{ route('admin.photos.show', $photo) }}" title="Modifier" class="rounded-md border border-black/10 p-1.5 hover:bg-black hover:text-white"><x-icons.edit class="h-4 w-4" /></a>
