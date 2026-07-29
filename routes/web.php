@@ -1,9 +1,13 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Admin\PhotoCategoryController;
 use App\Http\Controllers\Admin\PhotoController;
 use App\Http\Controllers\Admin\PhotoSelectionApiController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MapDataController;
@@ -68,7 +72,16 @@ Route::get('/photos/{photo:slug}', [PublicPhotoController::class, 'show'])->name
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
-    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->middleware('throttle:login')->name('login.store');
+
+    Route::get('/inscription', [RegisteredUserController::class, 'create'])->name('register');
+    Route::post('/inscription', [RegisteredUserController::class, 'store'])->middleware('throttle:register')->name('register.store');
+    Route::get('/inscription/en-attente', fn () => view('auth.register-pending'))->name('register.pending');
+
+    Route::get('/mot-de-passe-oublie', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('/mot-de-passe-oublie', [PasswordResetLinkController::class, 'store'])->middleware('throttle:password-reset')->name('password.email');
+    Route::get('/reinitialiser-mot-de-passe/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/reinitialiser-mot-de-passe', [NewPasswordController::class, 'store'])->middleware('throttle:password-reset')->name('password.update');
 });
 
 Route::middleware('auth')->group(function (): void {
@@ -102,4 +115,8 @@ Route::middleware(['auth', 'approved', 'role:admin'])->group(function (): void {
     Route::resource('/admin/photos', PhotoController::class)
         ->except(['create', 'edit'])
         ->names('admin.photos');
+
+    Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');
+    Route::post('/admin/users/{user}/approve', [UserController::class, 'approve'])->name('admin.users.approve');
+    Route::post('/admin/users/{user}/reject', [UserController::class, 'reject'])->name('admin.users.reject');
 });
