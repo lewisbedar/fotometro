@@ -40,14 +40,14 @@
             <div class="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 pt-4">
                 <p class="text-black/60">Idée et conception : <span class="font-semibold text-black/80">Lewis Bedar</span></p>
                 <div class="flex items-center gap-3">
-                    <a href="https://lewis.bedar.fr" target="_blank" rel="noopener noreferrer" class="opacity-80 transition hover:opacity-100" aria-label="Site de Lewis Bedar">
+                    <a href="https://www.lewisbedar.fr" target="_blank" rel="noopener noreferrer" class="opacity-80 transition hover:opacity-100" aria-label="Site de Lewis Bedar">
                         @if (file_exists(public_path('images/logo-lewis-bedar.png')))
                             <img src="{{ asset('images/logo-lewis-bedar.png') }}" alt="Lewis Bedar" class="h-10 w-auto">
                         @else
-                            <span class="text-sm font-semibold underline">lewis.bedar.fr</span>
+                            <span class="text-sm font-semibold underline">lewisbedar.fr</span>
                         @endif
                     </a>
-                    <a href="https://flux-croises.fr" target="_blank" rel="noopener noreferrer" class="opacity-80 transition hover:opacity-100" aria-label="Site de l’association Flux Croisés">
+                    <a href="https://www.flux-croises.fr" target="_blank" rel="noopener noreferrer" class="opacity-80 transition hover:opacity-100" aria-label="Site de l’association Flux Croisés">
                         @if (file_exists(public_path('images/logo-flux-croises.png')))
                             <img src="{{ asset('images/logo-flux-croises.png') }}" alt="Flux Croisés" class="h-5 w-auto">
                         @else

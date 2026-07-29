@@ -20,8 +20,8 @@
 
             <section class="rounded-md bg-white/70 p-3 ring-1 ring-black/10">
                 <h3 class="font-semibold">Avis aux bêta-testeurs</h3>
-                <p class="mt-1 text-black/60">Ceci est une version bêta : la plateforme est encore en cours de développement. Des bugs ou des anomalies peuvent donc être présents.</p>
-                <p class="mt-2 text-black/60">Si vous en repérez, vous pouvez me les signaler à <strong>contact(arobase)lewis.bedar.fr</strong>. Je vous en serai grandement reconnaissant !</p>
+                <p class="mt-1 text-black/60">Ceci est une version bêta : la plateforme est encore en cours de développement. Des bugs ou des anomalies peuvent donc être présents. Si vous êtes sur smartphone, l'expérience sera moyenne notamment sur la carte principale.</p>
+                <p class="mt-2 text-black/60">Si vous en repérez, vous pouvez me les signaler à <strong>contact(arobase)lewisbedar.fr</strong>. Je vous en serai grandement reconnaissant !</p>
                 <p class="mt-2 text-black/60">Si vous avez des idées, des suggestions, n’hésitez pas à me les donner.</p>
             </section>
 
@@ -31,7 +31,7 @@
                 <p class="mt-2 text-black/60">Vous ne pouvez pas encore créer de compte ni ajouter vos propres photos.</p>
                 <p class="mt-2 text-black/60">Pour le moment, seules deux stations disposent de photographies :</p>
                 <ul class="mt-1 list-disc space-y-1 pl-5 text-black/60">
-                    <li>Champs-Élysées – Clemenceau (lignes 1 et 13) ;</li>
+                    <li>Franklin D. Roosevelt (lignes 1 et 9) ;</li>
                     <li>Botzaris (ligne 7bis).</li>
                 </ul>
             </section>
