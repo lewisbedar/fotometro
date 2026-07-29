@@ -417,6 +417,29 @@
         transform: rotate(-135deg);
     }
 
+    /* Smooth open/close for the drawer body without Alpine's x-transition
+       (which previously threw off the horizontal-scroll sizing logic that
+       runs right after toggling — see toggleLineDiagram() / MapExplorerTest).
+       The 0fr/1fr grid-row trick animates to the content's real height
+       without JS measurement, and keeps adapting as the SVG streams in. */
+    .line-diagram-collapse {
+        display: grid;
+        /* minmax(0, ...) matters here: a bare 0fr still carries an implicit
+           auto (min-content) minimum once real content has been rendered
+           inside, so it stops collapsing back to 0 after the first open. */
+        grid-template-rows: minmax(0, 0fr);
+        transition: grid-template-rows 280ms ease;
+    }
+
+    .line-diagram-collapse.is-open {
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .line-diagram-collapse > #line-diagram-body {
+        overflow: hidden;
+        min-height: 0;
+    }
+
     .line-diagram-scroll {
         width: 100%;
         min-width: 0;
