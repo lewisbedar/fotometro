@@ -11,7 +11,7 @@
                 <p class="text-sm font-semibold uppercase tracking-[0.16em] text-black/55">Version bêta</p>
                 <h2 id="map-beta-title" class="mt-1 text-2xl font-semibold">Bienvenue sur fotométro !</h2>
             </div>
-            <button type="button" class="map-icon-button" x-ref="betaNoticeClose" x-on:click="closeBetaNotice()" aria-label="Fermer la fenêtre de bienvenue">×</button>
+            <button type="button" class="map-icon-button inline-flex items-center justify-center" x-ref="betaNoticeClose" x-on:click="closeBetaNotice()" aria-label="Fermer la fenêtre de bienvenue"><x-icons.close class="h-4 w-4" /></button>
         </div>
 
         <div class="mt-5 space-y-4 text-sm leading-6 text-black/70">

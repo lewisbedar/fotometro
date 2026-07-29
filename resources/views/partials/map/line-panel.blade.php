@@ -6,7 +6,7 @@
                     <span class="line-code h-12 min-w-12 text-base" :style="`background:${safeLineColor(selectedLine.color)};color:${safeLineColor(selectedLine.text_color)}`" x-text="selectedLine.code"></span>
                     <h2 class="text-lg font-semibold leading-snug" x-text="lineTerminusLabel(selectedLine)"></h2>
                 </div>
-                <button type="button" class="map-icon-button" x-on:click="clearLineSelection()" aria-label="Fermer la ligne">×</button>
+                <button type="button" class="map-icon-button inline-flex items-center justify-center" x-on:click="clearLineSelection()" aria-label="Fermer la ligne"><x-icons.close class="h-4 w-4" /></button>
             </div>
             <dl class="mt-5 space-y-3 text-sm" x-show="! isLineDiagramOpen">
                 <div class="flex justify-between gap-4"><dt>Stations</dt><dd class="font-semibold" x-text="selectedLine.progress?.total ?? selectedLine.stations?.length ?? 0"></dd></div>

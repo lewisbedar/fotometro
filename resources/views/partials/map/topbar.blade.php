@@ -6,7 +6,7 @@
     <div class="map-glass map-search-block">
         <label for="station-search" class="sr-only">Rechercher une station</label>
         <div class="flex min-h-11 items-center gap-3">
-            <span aria-hidden="true" class="text-lg">⌕</span>
+            <x-icons.search class="h-4 w-4 shrink-0 text-black/60" />
             <input
                 id="station-search"
                 x-ref="searchInput"
@@ -81,15 +81,15 @@
 
     <nav class="map-top-actions" aria-label="Actions de carte">
         <button type="button" class="map-glass map-action-button" x-on:click="toggleLinesPanel()" x-bind:aria-expanded="isLinesOpen.toString()" aria-controls="lines-panel">
-            <span aria-hidden="true">⌘</span>
+            <x-icons.lines class="h-4 w-4" />
             <span>Lignes</span>
         </button>
         <button type="button" class="map-glass map-action-button" x-on:click="toggleFiltersPanel()" x-bind:aria-expanded="isFiltersOpen.toString()" aria-controls="filters-panel">
-            <span aria-hidden="true">☷</span>
+            <x-icons.filter class="h-4 w-4" />
             <span>Filtres</span>
         </button>
         <a href="{{ auth()->check() ? route('admin.dashboard') : route('login') }}" class="map-glass map-action-button">
-            <span aria-hidden="true">♙</span>
+            <x-icons.admin class="h-4 w-4" />
             <span>Administration</span>
         </a>
     </nav>
