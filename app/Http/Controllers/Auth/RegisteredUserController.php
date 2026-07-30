@@ -6,9 +6,11 @@ use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Notifications\NewRegistrationPendingNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
@@ -43,6 +45,11 @@ class RegisteredUserController extends Controller
             'role' => UserRole::User,
             'status' => UserStatus::Pending,
         ])->save();
+
+        Notification::send(
+            User::query()->where('role', UserRole::Admin)->get(),
+            new NewRegistrationPendingNotification($user),
+        );
 
         return redirect()->route('register.pending');
     }

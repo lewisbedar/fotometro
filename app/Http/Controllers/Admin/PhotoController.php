@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\PhotoLicense;
+use App\Enums\PhotoModerationStatus;
 use App\Enums\PhotoProcessingStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Line;
@@ -82,6 +83,10 @@ class PhotoController extends Controller
         $shared = collect($data)->except(['files', 'photos'])->all();
         $shared['copyright_holder'] = $holder;
         $shared['copyright_notice'] = $license->copyrightNotice($holder);
+        $shared['user_id'] = $request->user()->id;
+        // The admin wizard is trusted content, unlike the public upload
+        // flow — it skips the moderation queue entirely.
+        $shared['moderation_status'] = PhotoModerationStatus::Approved;
 
         $created = 0;
         $rejected = 0;

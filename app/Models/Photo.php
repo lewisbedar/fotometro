@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PhotoLicense;
+use App\Enums\PhotoModerationStatus;
 use App\Enums\PhotoProcessingStatus;
 use Database\Factories\PhotoFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -72,6 +73,8 @@ class Photo extends Model
             'is_featured' => 'boolean',
             'is_published' => 'boolean',
             'publish_when_ready' => 'boolean',
+            'moderation_status' => PhotoModerationStatus::class,
+            'moderated_at' => 'datetime',
         ];
     }
 
@@ -109,15 +112,44 @@ class Photo extends Model
         return $this->belongsToMany(PhotoCategory::class);
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function moderator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'moderated_by');
+    }
+
+    public function rejectionReason(): BelongsTo
+    {
+        return $this->belongsTo(PhotoRejectionReason::class, 'photo_rejection_reason_id');
+    }
+
     public function scopePubliclyVisible(Builder $query): Builder
     {
         return $query
             ->where('processing_status', PhotoProcessingStatus::Ready)
             ->where('is_published', true)
+            // Belt-and-braces: PhotoPublicationService::publish() is the only
+            // place that flips is_published to true, and it already stamps
+            // moderation_status=Approved when it does — this re-checks the
+            // invariant explicitly rather than trusting it silently, given
+            // "no data leak" is this feature's top priority.
+            ->where('moderation_status', PhotoModerationStatus::Approved)
             ->where(fn (Builder $inner) => $inner
                 ->whereNull('published_at')
                 ->orWhere('published_at', '<=', now()))
             ->whereHas('station', fn (Builder $station) => $station->where('is_active', true));
+    }
+
+    public function scopeAwaitingModeration(Builder $query): Builder
+    {
+        return $query
+            ->where('moderation_status', PhotoModerationStatus::Pending)
+            ->where('processing_status', PhotoProcessingStatus::Ready)
+            ->orderBy('created_at');
     }
 
     public function publicWebUrl(): ?string

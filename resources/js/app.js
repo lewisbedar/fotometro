@@ -2817,6 +2817,7 @@ async function initStaticMaps() {
         const { latitude, longitude, label, statusColor, line, lineStations, lineColor } = element.dataset;
         const mapConfig = buildMapConfig(element.dataset);
         const usableMaxZoom = mapConfig.maxZoom;
+        const interactive = element.dataset.interactive === 'true';
 
         if (! mapConfig.hasBasemapConfig) {
             element.innerHTML = `<div class="grid h-full place-items-center p-6 text-center text-sm text-black/60">${basemapConfigurationMessage(mapConfig)}</div>`;
@@ -2829,9 +2830,13 @@ async function initStaticMaps() {
             center: longitude && latitude ? [Number(longitude), Number(latitude)] : [2.3522, 48.8566],
             zoom: longitude && latitude ? Math.min(14, usableMaxZoom) : Math.min(11, usableMaxZoom),
             maxZoom: usableMaxZoom,
-            interactive: false,
+            interactive,
             attributionControl: false,
         });
+
+        if (interactive) {
+            map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+        }
 
         if (mapConfig.attribution) {
             map.addControl(new maplibregl.AttributionControl({
@@ -2914,3 +2919,8 @@ async function initStaticMaps() {
 }
 
 initStaticMaps();
+
+// initStaticMaps() only sweeps the DOM once at module load — content added
+// later by Alpine's x-if (e.g. a modal's map preview, mounted fresh each
+// time it opens) needs this exposed so it can be re-run on demand.
+window.fotometroRefreshStaticMaps = initStaticMaps;
