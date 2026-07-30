@@ -2914,3 +2914,8 @@ async function initStaticMaps() {
 }
 
 initStaticMaps();
+
+// initStaticMaps() only sweeps the DOM once at module load — content added
+// later by Alpine's x-if (e.g. a modal's map preview, mounted fresh each
+// time it opens) needs this exposed so it can be re-run on demand.
+window.fotometroRefreshStaticMaps = initStaticMaps;

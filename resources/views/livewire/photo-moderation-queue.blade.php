@@ -1,10 +1,10 @@
 <div
     class="flex h-[calc(100dvh-12rem)] min-h-[420px] flex-col gap-3"
     x-data
-    x-on:keydown.window.left="$wire.startReject()"
-    x-on:keydown.window.right="$wire.approve()"
-    x-on:keydown.window.up="$wire.startEdit()"
-    x-on:keydown.window.down="$wire.startEdit()"
+    x-on:keydown.window.left="if (!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) $wire.startReject()"
+    x-on:keydown.window.right="if (!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) $wire.approve()"
+    x-on:keydown.window.up="if (!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) $wire.startEdit()"
+    x-on:keydown.window.down="if (!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) $wire.startEdit()"
 >
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -24,20 +24,86 @@
             <p class="mt-2 text-sm text-black/60">La file de modération est vide pour le moment.</p>
         </div>
     @else
-        <div class="flex min-h-0 flex-none flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-4 py-2 text-sm shadow-sm ring-1 ring-black/5">
-            <div class="min-w-0">
-                <span class="font-semibold">{{ $this->currentPhoto->station->name }}</span>
-                <span class="text-black/60"> · {{ $this->currentPhoto->stationAccess?->displayName() ?? 'Aucun accès' }} · {{ $this->currentPhoto->categories->isNotEmpty() ? $this->currentPhoto->categories->pluck('name')->join(', ') : 'Sans catégorie' }}</span>
+        <div
+            class="flex min-h-0 flex-none flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-4 py-2 text-sm shadow-sm ring-1 ring-black/5"
+            x-data="{ mapModal: { open: false, lat: null, lng: null, label: '' } }"
+        >
+            <div class="flex min-w-0 flex-wrap items-center gap-2">
+                @if ($this->currentPhoto->station->latitude && $this->currentPhoto->station->longitude)
+                    <button
+                        type="button"
+                        class="ratp-sign-mini cursor-pointer"
+                        title="Voir la station sur la carte"
+                        x-on:click="mapModal = { open: true, lat: {{ $this->currentPhoto->station->latitude }}, lng: {{ $this->currentPhoto->station->longitude }}, label: {{ \Illuminate\Support\Js::from($this->currentPhoto->station->name) }} }"
+                    >
+                        <span class="ratp-sign-mini-plate"><span class="ratp-sign-mini-text">{{ $this->currentPhoto->station->name }}</span></span>
+                    </button>
+                @else
+                    <span class="ratp-sign-mini"><span class="ratp-sign-mini-plate"><span class="ratp-sign-mini-text">{{ $this->currentPhoto->station->name }}</span></span></span>
+                @endif
+
+                @foreach ($this->currentPhoto->station->lines as $line)
+                    <span class="rounded-full px-2.5 py-0.5 text-xs font-bold" style="background: {{ $line->color }}; color: {{ $line->text_color }}">{{ $line->code }}</span>
+                @endforeach
+
+                @if ($access = $this->currentPhoto->stationAccess)
+                    <button
+                        type="button"
+                        class="flex items-center gap-1.5 rounded-full bg-black/5 px-2.5 py-1 text-xs font-semibold hover:bg-black/10"
+                        title="Voir l'accès sur la carte"
+                        @if ($access->latitude && $access->longitude)
+                            x-on:click="mapModal = { open: true, lat: {{ $access->latitude }}, lng: {{ $access->longitude }}, label: {{ \Illuminate\Support\Js::from($access->displayName()) }} }"
+                        @endif
+                    >
+                        @if ($access->number)<span class="access-number-badge">{{ $access->number }}</span>@endif
+                        {{ $access->displayName() }}
+                    </button>
+                @else
+                    <span class="text-xs text-black/50">Aucun accès</span>
+                @endif
+
+                <span class="text-xs text-black/60">{{ $this->currentPhoto->categories->isNotEmpty() ? $this->currentPhoto->categories->pluck('name')->join(', ') : 'Sans catégorie' }}</span>
                 @if ($this->currentPhoto->description)
-                    <span class="text-black/70"> — {{ $this->currentPhoto->description }}</span>
+                    <span class="text-xs text-black/70">— {{ $this->currentPhoto->description }}</span>
                 @endif
             </div>
             <span class="flex-none text-xs text-black/45">Soumise par {{ $this->currentPhoto->user?->name ?? 'admin' }} le {{ $this->currentPhoto->created_at->format('d/m/Y') }}</span>
+
+            <template x-if="mapModal.open">
+                <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" x-on:click.self="mapModal.open = false">
+                    <div class="w-full max-w-lg rounded-lg bg-white p-4 shadow-xl">
+                        <div class="mb-2 flex items-center justify-between">
+                            <p class="font-semibold" x-text="mapModal.label"></p>
+                            <button type="button" x-on:click="mapModal.open = false" class="text-black/50 hover:text-black"><x-icons.close class="h-5 w-5" /></button>
+                        </div>
+                        <div
+                            class="fotometro-static-map h-64 overflow-hidden rounded-md bg-[#eef2f0]"
+                            x-bind:data-latitude="mapModal.lat"
+                            x-bind:data-longitude="mapModal.lng"
+                            x-bind:data-label="mapModal.label"
+                            data-status-color="#151515"
+                            data-basemap-driver="{{ $mapConfig['basemapDriver'] }}"
+                            data-raster-url="{{ $mapConfig['rasterUrl'] }}"
+                            data-raster-tile-size="{{ $mapConfig['rasterTileSize'] }}"
+                            data-map-attribution="{{ $mapConfig['attribution'] }}"
+                            data-map-center-longitude="{{ $mapConfig['centerLongitude'] }}"
+                            data-map-center-latitude="{{ $mapConfig['centerLatitude'] }}"
+                            data-map-zoom="{{ $mapConfig['zoom'] }}"
+                            data-map-max-zoom="{{ $mapConfig['maxZoom'] }}"
+                            x-init="$nextTick(() => window.fotometroRefreshStaticMaps())"
+                        ></div>
+                    </div>
+                </div>
+            </template>
         </div>
 
-        <div class="relative min-h-0 flex-1 overflow-hidden rounded-lg bg-black shadow-sm ring-1 ring-black/5" wire:key="photo-{{ $this->currentPhoto->id }}">
+        <div
+            class="relative min-h-0 flex-1 overflow-hidden rounded-lg bg-black shadow-sm ring-1 ring-black/5"
+            wire:key="photo-{{ $this->currentPhoto->id }}"
+            x-data="{ lightbox: false }"
+        >
             @if ($this->currentPhoto->web_url)
-                <img src="{{ $this->currentPhoto->web_url }}" alt="" class="h-full w-full object-contain">
+                <img src="{{ $this->currentPhoto->web_url }}" alt="" class="h-full w-full cursor-zoom-in object-contain" x-on:click="lightbox = true">
             @else
                 <div class="flex h-full items-center justify-center text-sm text-white/50">Pas d’aperçu</div>
             @endif
@@ -86,6 +152,31 @@
                     <x-icons.edit class="h-5 w-5" />
                 </span>
             </button>
+
+            <template x-if="lightbox">
+                <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" x-on:click.self="lightbox = false">
+                    <button type="button" x-on:click="lightbox = false" class="absolute right-4 top-4 text-white/80 hover:text-white"><x-icons.close class="h-7 w-7" /></button>
+                    <div class="flex max-h-full max-w-full flex-col gap-4 overflow-y-auto lg:flex-row lg:items-start">
+                        <img src="{{ $this->currentPhoto->web_url }}" alt="" class="max-h-[85vh] max-w-full rounded-lg object-contain lg:max-w-[70vw]">
+                        <div class="w-full flex-none space-y-2 rounded-lg bg-white p-4 text-sm lg:w-72">
+                            <p class="font-semibold">Données EXIF</p>
+                            @if ($this->currentPhoto->taken_at || $this->currentPhoto->camera_make || $this->currentPhoto->camera_model || $this->currentPhoto->lens || $this->currentPhoto->focal_length || $this->currentPhoto->aperture || $this->currentPhoto->shutter_speed || $this->currentPhoto->iso)
+                                <dl class="space-y-1">
+                                    @if ($this->currentPhoto->taken_at)<div class="flex justify-between gap-3"><dt class="text-black/55">Date</dt><dd>{{ $this->currentPhoto->taken_at->format('d/m/Y H:i') }}</dd></div>@endif
+                                    @if (trim(($this->currentPhoto->camera_make ?? '').' '.($this->currentPhoto->camera_model ?? '')))<div class="flex justify-between gap-3"><dt class="text-black/55">Appareil</dt><dd>{{ trim(($this->currentPhoto->camera_make ?? '').' '.($this->currentPhoto->camera_model ?? '')) }}</dd></div>@endif
+                                    @if ($this->currentPhoto->lens)<div class="flex justify-between gap-3"><dt class="text-black/55">Objectif</dt><dd>{{ $this->currentPhoto->lens }}</dd></div>@endif
+                                    @if ($this->currentPhoto->focal_length)<div class="flex justify-between gap-3"><dt class="text-black/55">Focale</dt><dd>{{ $this->currentPhoto->focal_length }} mm</dd></div>@endif
+                                    @if ($this->currentPhoto->aperture)<div class="flex justify-between gap-3"><dt class="text-black/55">Ouverture</dt><dd>f/{{ $this->currentPhoto->aperture }}</dd></div>@endif
+                                    @if ($this->currentPhoto->shutter_speed)<div class="flex justify-between gap-3"><dt class="text-black/55">Vitesse</dt><dd>{{ $this->currentPhoto->shutter_speed }}</dd></div>@endif
+                                    @if ($this->currentPhoto->iso)<div class="flex justify-between gap-3"><dt class="text-black/55">ISO</dt><dd>{{ $this->currentPhoto->iso }}</dd></div>@endif
+                                </dl>
+                            @else
+                                <p class="text-black/50">Aucune donnée EXIF disponible.</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
 
         {{-- Both panels below are fixed overlays on purpose: they must never
@@ -136,13 +227,39 @@
                     </label>
                     <div>
                         <p class="text-sm font-semibold">Catégories</p>
-                        <div class="mt-1 flex flex-wrap gap-1.5">
-                            @foreach ($this->availableCategories as $category)
-                                <label class="cursor-pointer select-none rounded-full px-3 py-1 text-sm font-semibold ring-1 ring-black/10 has-[:checked]:bg-black has-[:checked]:text-white hover:bg-black/5">
-                                    <input type="checkbox" value="{{ $category->id }}" wire:model="category_ids" class="sr-only">
-                                    {{ $category->name }}
-                                </label>
-                            @endforeach
+                        <div class="mt-1 space-y-1">
+                            @forelse ($this->selectedCategories as $category)
+                                <div class="flex items-center justify-between rounded-md bg-black/5 px-3 py-1.5 text-sm" wire:key="selected-cat-{{ $category->id }}">
+                                    <span>{{ $category->name }}</span>
+                                    <button type="button" wire:click="removeCategory({{ $category->id }})" class="text-black/50 hover:text-black">
+                                        <x-icons.close class="h-4 w-4" />
+                                    </button>
+                                </div>
+                            @empty
+                                <p class="text-sm text-black/45">Aucune catégorie sélectionnée.</p>
+                            @endforelse
+                        </div>
+                        <div class="relative mt-2">
+                            <input
+                                type="text"
+                                wire:model.live.debounce.300ms="categorySearch"
+                                placeholder="Rechercher une catégorie..."
+                                class="w-full rounded-md border border-black/15 p-2 text-sm"
+                            >
+                            @if ($this->categorySearchResults->isNotEmpty())
+                                <div class="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-black/15 bg-white shadow-lg">
+                                    @foreach ($this->categorySearchResults as $result)
+                                        <button
+                                            type="button"
+                                            wire:click="addCategory({{ $result->id }})"
+                                            wire:key="search-result-{{ $result->id }}"
+                                            class="block w-full px-3 py-2 text-left text-sm hover:bg-black/5"
+                                        >
+                                            {{ $result->parent ? $result->parent->name.' › ' : '' }}{{ $result->name }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @endif
                         </div>
                     </div>
                     <label class="block text-sm font-semibold">Description

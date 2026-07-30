@@ -33,6 +33,8 @@ class PhotoModerationQueue extends Component
 
     public ?string $description = null;
 
+    public string $categorySearch = '';
+
     // Reject panel (left) fields.
     public ?int $rejection_reason_id = null;
 
@@ -52,7 +54,7 @@ class PhotoModerationQueue extends Component
             return null;
         }
 
-        return Photo::query()->with(['station', 'stationAccess', 'categories', 'user'])->find($this->currentPhotoId);
+        return Photo::query()->with(['station.lines', 'stationAccess', 'categories', 'user'])->find($this->currentPhotoId);
     }
 
     #[Computed]
@@ -68,9 +70,47 @@ class PhotoModerationQueue extends Component
     }
 
     #[Computed]
-    public function availableCategories(): Collection
+    public function selectedCategories(): Collection
     {
-        return PhotoCategory::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
+        if (empty($this->category_ids)) {
+            return collect();
+        }
+
+        return PhotoCategory::query()->whereIn('id', $this->category_ids)->orderBy('name')->get();
+    }
+
+    #[Computed]
+    public function categorySearchResults(): Collection
+    {
+        if (trim($this->categorySearch) === '') {
+            return collect();
+        }
+
+        return PhotoCategory::query()
+            ->with('parent')
+            ->where('is_active', true)
+            ->whereNotIn('id', $this->category_ids ?: [0])
+            ->where('name', 'like', '%'.$this->categorySearch.'%')
+            ->orderBy('name')
+            ->limit(8)
+            ->get();
+    }
+
+    public function addCategory(int $categoryId): void
+    {
+        if (! in_array($categoryId, $this->category_ids, true)) {
+            $this->category_ids[] = $categoryId;
+        }
+
+        $this->categorySearch = '';
+    }
+
+    public function removeCategory(int $categoryId): void
+    {
+        $this->category_ids = array_values(array_filter(
+            $this->category_ids,
+            fn (int $id) => $id !== $categoryId,
+        ));
     }
 
     #[Computed]
@@ -93,7 +133,7 @@ class PhotoModerationQueue extends Component
     {
         $this->editing = false;
         $this->rejecting = false;
-        $this->reset(['rejection_reason_id', 'custom_rejection_note']);
+        $this->reset(['rejection_reason_id', 'custom_rejection_note', 'categorySearch']);
 
         $this->currentPhotoId = Photo::query()->awaitingModeration()->first()?->id;
         unset($this->currentPhoto);
@@ -167,6 +207,7 @@ class PhotoModerationQueue extends Component
     public function cancelEdit(): void
     {
         $this->editing = false;
+        $this->categorySearch = '';
     }
 
     public function saveEdit(PhotoPublicationService $publication): void
@@ -201,6 +242,25 @@ class PhotoModerationQueue extends Component
 
     public function render(): View
     {
-        return view('livewire.photo-moderation-queue');
+        return view('livewire.photo-moderation-queue', [
+            'mapConfig' => $this->mapConfig(),
+        ]);
+    }
+
+    private function mapConfig(): array
+    {
+        $map = config('fotometro.map');
+
+        return [
+            'basemapDriver' => $map['basemap_driver'] ?? 'raster',
+            'styleUrl' => $map['style_url'] ?? '',
+            'rasterUrl' => $map['raster_url'] ?? '',
+            'rasterTileSize' => $map['raster_tile_size'] ?? 256,
+            'attribution' => $map['attribution'] ?? '',
+            'centerLongitude' => $map['center']['longitude'] ?? 2.3522,
+            'centerLatitude' => $map['center']['latitude'] ?? 48.8566,
+            'zoom' => $map['center']['zoom'] ?? 11.5,
+            'maxZoom' => $map['center']['max_zoom'] ?? 19,
+        ];
     }
 }
