@@ -71,13 +71,14 @@
 
             <template x-if="mapModal.open">
                 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" x-on:click.self="mapModal.open = false">
-                    <div class="w-full max-w-lg rounded-lg bg-white p-4 shadow-xl">
+                    <div class="w-full max-w-xl rounded-lg bg-white p-4 shadow-xl">
                         <div class="mb-2 flex items-center justify-between">
                             <p class="font-semibold" x-text="mapModal.label"></p>
                             <button type="button" x-on:click="mapModal.open = false" class="text-black/50 hover:text-black"><x-icons.close class="h-5 w-5" /></button>
                         </div>
                         <div
-                            class="fotometro-static-map h-64 overflow-hidden rounded-md bg-[#eef2f0]"
+                            class="fotometro-static-map h-96 overflow-hidden rounded-md bg-[#eef2f0]"
+                            data-interactive="true"
                             x-bind:data-latitude="mapModal.lat"
                             x-bind:data-longitude="mapModal.lng"
                             x-bind:data-label="mapModal.label"
@@ -156,8 +157,17 @@
             <template x-if="lightbox">
                 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" x-on:click.self="lightbox = false">
                     <button type="button" x-on:click="lightbox = false" class="absolute right-4 top-4 text-white/80 hover:text-white"><x-icons.close class="h-7 w-7" /></button>
-                    <div class="flex max-h-full max-w-full flex-col gap-4 overflow-y-auto lg:flex-row lg:items-start">
-                        <img src="{{ $this->currentPhoto->web_url }}" alt="" class="max-h-[85vh] max-w-full rounded-lg object-contain lg:max-w-[70vw]">
+                    <div class="flex max-h-full max-w-full flex-col gap-4 overflow-y-auto lg:flex-row lg:items-start" x-on:click.stop>
+                        <div class="max-h-[85vh] max-w-full overflow-auto rounded-lg lg:max-w-[70vw]" x-data="{ zoomed: false }">
+                            <img
+                                src="{{ $this->currentPhoto->web_url }}"
+                                alt=""
+                                x-on:click="zoomed = ! zoomed"
+                                x-bind:class="zoomed ? 'max-w-none cursor-zoom-out' : 'max-h-[85vh] max-w-full cursor-zoom-in object-contain'"
+                                x-bind:style="zoomed ? 'width: 200%' : ''"
+                                class="rounded-lg"
+                            >
+                        </div>
                         <div class="w-full flex-none space-y-2 rounded-lg bg-white p-4 text-sm lg:w-72">
                             <p class="font-semibold">Données EXIF</p>
                             @if ($this->currentPhoto->taken_at || $this->currentPhoto->camera_make || $this->currentPhoto->camera_model || $this->currentPhoto->lens || $this->currentPhoto->focal_length || $this->currentPhoto->aperture || $this->currentPhoto->shutter_speed || $this->currentPhoto->iso)
