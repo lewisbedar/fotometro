@@ -6,8 +6,11 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Admin\PhotoCategoryController;
 use App\Http\Controllers\Admin\PhotoController;
+use App\Http\Controllers\Admin\PhotoRejectionReasonController;
 use App\Http\Controllers\Admin\PhotoSelectionApiController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Photos\PhotoUploadController;
+use App\Livewire\PhotoModerationQueue;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MapDataController;
@@ -88,17 +91,20 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });
 
-// Shared by every approved account regardless of role — currently just the
-// lookup endpoints the photo forms need; the user upload flow and profile
-// pages (chunk 3/4 of the accounts feature) will join this group too.
+// Shared by every approved account regardless of role.
 Route::middleware(['auth', 'approved'])->group(function (): void {
     Route::get('/admin/api/lines/{line}/stations', [PhotoSelectionApiController::class, 'stations'])->name('admin.api.lines.stations');
     Route::get('/admin/api/stations/{station}/accesses', [PhotoSelectionApiController::class, 'accesses'])->name('admin.api.stations.accesses');
     Route::post('/admin/photos/detect-station', [PhotoSelectionApiController::class, 'detectStation'])->name('admin.api.photos.detect-station');
+
+    Route::get('/televerser', [PhotoUploadController::class, 'create'])->name('photos.upload.create');
+    Route::post('/televerser', [PhotoUploadController::class, 'store'])->name('photos.upload.store');
+    Route::get('/televerser/merci', fn () => view('photos.upload-thanks'))->name('photos.upload.thanks');
 });
 
 Route::middleware(['auth', 'approved', 'role:admin,moderator'])->group(function (): void {
     Route::get('/admin', DashboardController::class)->name('admin.dashboard');
+    Route::get('/admin/moderation', PhotoModerationQueue::class)->name('admin.moderation.index');
 });
 
 Route::middleware(['auth', 'approved', 'role:admin'])->group(function (): void {
@@ -119,4 +125,8 @@ Route::middleware(['auth', 'approved', 'role:admin'])->group(function (): void {
     Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');
     Route::post('/admin/users/{user}/approve', [UserController::class, 'approve'])->name('admin.users.approve');
     Route::post('/admin/users/{user}/reject', [UserController::class, 'reject'])->name('admin.users.reject');
+
+    Route::resource('/admin/photo-rejection-reasons', PhotoRejectionReasonController::class)
+        ->except(['show', 'destroy'])
+        ->names('admin.photo-rejection-reasons');
 });

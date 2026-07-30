@@ -3,6 +3,7 @@
 namespace App\Services\Photos;
 
 use App\Enums\PhotoLicense;
+use App\Enums\PhotoModerationStatus;
 use App\Enums\PhotoProcessingStatus;
 use App\Models\Photo;
 use App\Models\StationAccess;
@@ -74,6 +75,15 @@ class PhotoImporter
 
             $photo->categories()->sync($attributes['photo_category_ids'] ?? []);
 
+            // Not mass-fillable on purpose (see Photo's #[Fillable]) — these
+            // two decide whether a photo goes straight to public or sits in
+            // the moderation queue, so they're only ever set here from
+            // server-controlled context, never from a request payload.
+            $photo->forceFill([
+                'user_id' => $attributes['user_id'] ?? null,
+                'moderation_status' => $attributes['moderation_status'] ?? PhotoModerationStatus::Pending,
+            ])->save();
+
             if (config('fotometro.photos.process_synchronously', false)) {
                 $this->processor->process($photo);
             }
@@ -95,6 +105,13 @@ class PhotoImporter
 
         if (! in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true) || ! in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)) {
             throw ValidationException::withMessages(['files' => 'Format photo non autorise.']);
+        }
+
+        // Uploads are no longer limited to a trusted admin — guard against a
+        // small file that decompresses into a huge pixel grid (a classic
+        // decompression-bomb DoS vector) now that the public can submit.
+        if (((int) $size[0]) * ((int) $size[1]) > 50_000_000) {
+            throw ValidationException::withMessages(['files' => 'Les dimensions de l’image sont trop importantes.']);
         }
     }
 

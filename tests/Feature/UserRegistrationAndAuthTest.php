@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
+use App\Notifications\NewRegistrationPendingNotification;
 use App\Notifications\UserAccountApprovedNotification;
 use App\Notifications\UserAccountRejectedNotification;
 use Tests\TestCase;
@@ -32,6 +33,24 @@ class UserRegistrationAndAuthTest extends TestCase
         $this->assertSame(UserRole::User, $user->role);
         $this->assertSame(UserStatus::Pending, $user->status);
         $this->assertNotNull($user->username);
+    }
+
+    public function test_registration_notifies_every_admin(): void
+    {
+        Notification::fake();
+
+        $admin = User::factory()->create();
+        $moderator = User::factory()->moderator()->create();
+
+        $this->post(route('register.store'), [
+            'name' => 'Nouvelle Personne',
+            'email' => 'nouvelle@example.com',
+            'password' => 'MotDePasse1234',
+            'password_confirmation' => 'MotDePasse1234',
+        ]);
+
+        Notification::assertSentTo($admin, NewRegistrationPendingNotification::class);
+        Notification::assertNotSentTo($moderator, NewRegistrationPendingNotification::class);
     }
 
     public function test_registration_ignores_a_role_or_status_supplied_in_the_request(): void

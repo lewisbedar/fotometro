@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\PhotoLicense;
+use App\Enums\PhotoModerationStatus;
 use App\Enums\PhotoProcessingStatus;
 use App\Models\Photo;
 use App\Models\PhotoCategory;
@@ -38,6 +39,10 @@ class PhotoFactory extends Factory
             'publish_when_ready' => false,
             'published_at' => now(),
             'sort_order' => 0,
+            // Every pre-existing test predates the moderation concept and
+            // implicitly assumes admin-trusted, already-approved content —
+            // default here matches that so existing tests keep passing.
+            'moderation_status' => PhotoModerationStatus::Approved,
         ];
     }
 

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\CoverageStatus;
+use App\Enums\PhotoModerationStatus;
 use App\Enums\PhotoProcessingStatus;
 use App\Models\Line;
 use App\Models\Photo;
@@ -85,7 +86,16 @@ class PhotoCatalogTest extends TestCase
         $station = Station::factory()->create();
         $photo = app(PhotoImporter::class)->import(
             UploadedFile::fake()->image('auto.jpg', 1200, 800),
-            ['station_id' => $station->id, 'license' => 'all_rights_reserved', 'publish_when_ready' => true]
+            [
+                'station_id' => $station->id,
+                'license' => 'all_rights_reserved',
+                'publish_when_ready' => true,
+                // publish_when_ready is only ever true for admin-imported
+                // photos in practice (Admin\PhotoController::store() always
+                // sets this), which are already moderation-approved at
+                // creation time — this mirrors that real usage.
+                'moderation_status' => PhotoModerationStatus::Approved,
+            ]
         );
 
         $this->get(route('photos.show', $photo))->assertNotFound();

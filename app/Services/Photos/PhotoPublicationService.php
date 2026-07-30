@@ -2,8 +2,12 @@
 
 namespace App\Services\Photos;
 
+use App\Enums\PhotoModerationStatus;
 use App\Enums\PhotoProcessingStatus;
 use App\Models\Photo;
+use App\Models\PhotoRejectionReason;
+use App\Notifications\PhotoRejectedNotification;
+use Illuminate\Support\Facades\Auth;
 
 class PhotoPublicationService
 {
@@ -21,6 +25,9 @@ class PhotoPublicationService
         $photo->forceFill([
             'is_published' => true,
             'published_at' => $photo->published_at ?? now(),
+            'moderation_status' => PhotoModerationStatus::Approved,
+            'moderated_at' => $photo->moderated_at ?? now(),
+            'moderated_by' => $photo->moderated_by ?? Auth::id(),
         ])->save();
 
         $this->afterVisibilityChange($photo);
@@ -40,6 +47,25 @@ class PhotoPublicationService
         }
 
         $this->afterVisibilityChange($photo);
+    }
+
+    /**
+     * A rejected photo was never public — no coverage/cache invalidation
+     * needed, unlike publish()/unpublish().
+     */
+    public function reject(Photo $photo, ?PhotoRejectionReason $reason, ?string $note): void
+    {
+        $photo->forceFill([
+            'moderation_status' => PhotoModerationStatus::Rejected,
+            'photo_rejection_reason_id' => $reason?->id,
+            'rejection_note' => $note,
+            'moderated_at' => now(),
+            'moderated_by' => Auth::id(),
+        ])->save();
+
+        if ($photo->user_id) {
+            $photo->user->notify(new PhotoRejectedNotification($reason?->label, $note));
+        }
     }
 
     public function afterVisibilityChange(Photo $photo): void
