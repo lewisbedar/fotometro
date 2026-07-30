@@ -44,6 +44,12 @@ return [
             'opacity' => (float) env('FOTOMETRO_PHOTO_WATERMARK_OPACITY', 0.45),
         ],
     ],
+    'avatar' => [
+        'max_upload_mb' => (int) env('FOTOMETRO_AVATAR_MAX_UPLOAD_MB', 8),
+        'size' => (int) env('FOTOMETRO_AVATAR_SIZE', 400),
+        'quality' => (int) env('FOTOMETRO_AVATAR_QUALITY', 85),
+    ],
+
     'idfm' => [
         'lines_url' => env('FOTOMETRO_IDFM_LINES_URL', 'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/referentiel-des-lignes/records?limit=100'),
         'arrets_lignes_url' => env('FOTOMETRO_IDFM_ARRETS_LIGNES_URL', 'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/arrets-lignes/records?limit=100'),

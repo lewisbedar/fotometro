@@ -10,10 +10,12 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['name', 'email', 'password', 'username', 'bio'])]
+#[Fillable(['name', 'email', 'password', 'username', 'bio', 'copyright_display_name'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -69,5 +71,26 @@ class User extends Authenticatable
     public function isApproved(): bool
     {
         return $this->status === UserStatus::Approved;
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(Photo::class);
+    }
+
+    public function displayCopyrightName(): string
+    {
+        return $this->copyright_display_name ?: $this->name;
+    }
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (! $this->avatar_path) {
+            return null;
+        }
+
+        // Same fixed filename is reused on every re-upload, so a version
+        // query string is the only way to bust the browser cache.
+        return Storage::disk('public')->url($this->avatar_path).'?v='.($this->updated_at?->timestamp ?? time());
     }
 }

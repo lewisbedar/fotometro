@@ -11,9 +11,11 @@ use App\Http\Controllers\Admin\PhotoSelectionApiController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Photos\PhotoUploadController;
 use App\Livewire\PhotoModerationQueue;
+use App\Http\Controllers\AccountSettingsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MapDataController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicPhotoController;
 use App\Http\Controllers\PublicLineController;
 use App\Http\Controllers\PublicStationController;
@@ -72,6 +74,7 @@ Route::get('/api/map/search', StationSearchController::class)->middleware('throt
 Route::get('/stations/{station:slug}', [PublicStationController::class, 'show'])->name('stations.show');
 Route::get('/lignes/{line:slug}', [PublicLineController::class, 'show'])->name('lines.show');
 Route::get('/photos/{photo:slug}', [PublicPhotoController::class, 'show'])->name('photos.show');
+Route::get('/profil/{user:username}', [ProfileController::class, 'show'])->name('profiles.show');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
@@ -100,6 +103,16 @@ Route::middleware(['auth', 'approved'])->group(function (): void {
     Route::get('/televerser', [PhotoUploadController::class, 'create'])->name('photos.upload.create');
     Route::post('/televerser', [PhotoUploadController::class, 'store'])->name('photos.upload.store');
     Route::get('/televerser/merci', fn () => view('photos.upload-thanks'))->name('photos.upload.thanks');
+
+    // No {user} route parameter on purpose: these always act on the
+    // authenticated user, never on an arbitrary profile passed in the URL.
+    Route::patch('/mon-profil/bio', [ProfileController::class, 'updateBio'])->name('profile.bio.update');
+    Route::post('/mon-profil/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar.update');
+    Route::delete('/mon-profil/avatar', [ProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
+
+    Route::get('/parametres', [AccountSettingsController::class, 'edit'])->name('settings.edit');
+    Route::patch('/parametres', [AccountSettingsController::class, 'update'])->name('settings.update');
+    Route::delete('/parametres', [AccountSettingsController::class, 'destroy'])->name('settings.destroy');
 });
 
 Route::middleware(['auth', 'approved', 'role:admin,moderator'])->group(function (): void {

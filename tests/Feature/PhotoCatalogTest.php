@@ -494,6 +494,23 @@ class PhotoCatalogTest extends TestCase
         $this->assertStringNotContainsString('originals', $this->get(route('photos.show', $ready))->getContent());
     }
 
+    public function test_viewing_a_photo_increments_its_view_count_once_per_session(): void
+    {
+        $photo = Photo::factory()->create();
+        $this->assertSame(0, $photo->fresh()->views_count);
+
+        $this->get(route('photos.show', $photo))->assertOk();
+        $this->assertSame(1, $photo->fresh()->views_count);
+
+        // Same session viewing it again shouldn't inflate the count.
+        $this->get(route('photos.show', $photo))->assertOk();
+        $this->assertSame(1, $photo->fresh()->views_count);
+
+        // A different visitor (nothing recorded in their session yet) does count as a new view.
+        $this->withSession(['viewed_photos' => []])->get(route('photos.show', $photo))->assertOk();
+        $this->assertSame(2, $photo->fresh()->views_count);
+    }
+
     public function test_station_page_displays_enriched_gallery_filters_and_accesses(): void
     {
         $station = Station::factory()->create([
@@ -811,6 +828,6 @@ class PhotoCatalogTest extends TestCase
             ->get(route('admin.dashboard'))
             ->assertOk()
             ->assertSee('Tableau de bord')
-            ->assertSee('Retour à la carte');
+            ->assertSee('fotométro');
     }
 }
