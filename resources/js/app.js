@@ -122,7 +122,7 @@ function describeMapError(event) {
     } catch {
         return {
             name: 'MapLibreError',
-            message: 'Evenement MapLibre non serialisable',
+            message: 'Événement MapLibre non sérialisable',
             stack: null,
             raw: event,
         };

@@ -2,12 +2,14 @@
 
 namespace App\Livewire;
 
+use App\Models\Line;
 use App\Models\Photo;
 use App\Models\PhotoCategory;
 use App\Models\PhotoRejectionReason;
 use App\Models\Station;
 use App\Services\Photos\PhotoPublicationService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -24,6 +26,8 @@ class PhotoModerationQueue extends Component
     public bool $rejecting = false;
 
     // Edit panel (up/down) fields.
+    public ?int $line_id = null;
+
     public ?int $station_id = null;
 
     public ?int $station_access_id = null;
@@ -114,9 +118,33 @@ class PhotoModerationQueue extends Component
     }
 
     #[Computed]
+    public function availableLines(): Collection
+    {
+        return Line::query()->where('is_active', true)->orderBy('sort_order')->get();
+    }
+
+    #[Computed]
     public function availableStations(): Collection
     {
-        return Station::query()->where('is_active', true)->orderBy('name')->get();
+        return Station::query()
+            ->where('is_active', true)
+            ->when(
+                $this->line_id,
+                fn (Builder $query) => $query->whereHas('lines', fn (Builder $lineQuery) => $lineQuery->where('lines.id', $this->line_id)),
+            )
+            ->orderBy('name')
+            ->get();
+    }
+
+    public function updatedLineId(): void
+    {
+        $this->station_id = null;
+        $this->station_access_id = null;
+    }
+
+    public function updatedStationId(): void
+    {
+        $this->station_access_id = null;
     }
 
     #[Computed]
@@ -133,7 +161,7 @@ class PhotoModerationQueue extends Component
     {
         $this->editing = false;
         $this->rejecting = false;
-        $this->reset(['rejection_reason_id', 'custom_rejection_note', 'categorySearch']);
+        $this->reset(['rejection_reason_id', 'custom_rejection_note', 'categorySearch', 'line_id']);
 
         $this->currentPhotoId = Photo::query()->awaitingModeration()->first()?->id;
         unset($this->currentPhoto);
@@ -196,6 +224,7 @@ class PhotoModerationQueue extends Component
             return;
         }
 
+        $this->line_id = $photo->station->lines->first()?->id;
         $this->station_id = $photo->station_id;
         $this->station_access_id = $photo->station_access_id;
         $this->category_ids = $photo->categories->pluck('id')->all();

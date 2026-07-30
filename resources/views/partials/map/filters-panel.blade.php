@@ -28,10 +28,10 @@
                 <label class="map-filter-row"><input type="checkbox" x-model="showStations" x-on:change="refreshLayerVisibility()"> <span>Stations</span></label>
                 <label class="map-filter-row"><input type="checkbox" x-model="showLineTracks" x-on:change="refreshLayerVisibility()"> <span>Traces des lignes</span></label>
                 <label class="map-filter-row"><input type="checkbox" x-model="showConnections" x-on:change="renderSelectedLineDiagram()"> <span>Correspondances</span></label>
-                <label class="map-filter-row opacity-60"><input type="checkbox" disabled> <span>Entrees et sorties <small class="ml-1 rounded bg-black/5 px-2 py-0.5">Bientot disponible</small></span></label>
+                <label class="map-filter-row opacity-60"><input type="checkbox" disabled> <span>Entrées et sorties <small class="ml-1 rounded bg-black/5 px-2 py-0.5">Bientôt disponible</small></span></label>
             </div>
         </fieldset>
 
-        <button type="button" class="map-secondary-button w-full" x-on:click="resetFilters()">Reinitialiser les filtres</button>
+        <button type="button" class="map-secondary-button w-full" x-on:click="resetFilters()">Réinitialiser les filtres</button>
     </div>
 </aside>

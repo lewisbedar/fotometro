@@ -1,6 +1,5 @@
 <x-layouts.app title="{{ $photo->title ?: $photo->original_filename }} - fotométro" :full-width="true">
     <div class="space-y-6 rounded-lg bg-white p-6 shadow-sm ring-1 ring-black/5">
-        @if (session('status')) <p class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</p> @endif
         @if ($errors->any()) <div class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ $errors->first() }}</div> @endif
 
         <div class="flex flex-wrap items-start justify-between gap-4">

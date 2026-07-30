@@ -3,10 +3,6 @@
         <h1 class="text-2xl font-semibold">Connexion</h1>
         <p class="mt-2 text-sm text-black/60">Connectez-vous à votre compte fotométro.</p>
 
-        @if (session('status'))
-            <p class="mt-4 rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</p>
-        @endif
-
         <form method="POST" action="{{ route('login.store') }}" class="mt-6 space-y-5">
             @csrf
 

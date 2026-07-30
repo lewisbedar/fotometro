@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\PhotoModerationStatus;
 use App\Enums\PhotoProcessingStatus;
 use App\Livewire\PhotoModerationQueue;
+use App\Models\Line;
 use App\Models\Photo;
 use App\Models\PhotoCategory;
 use App\Models\PhotoRejectionReason;
@@ -155,6 +156,57 @@ class UserPhotoUploadAndModerationTest extends TestCase
         $this->assertTrue($photo->categories->pluck('id')->contains($category->id));
         $this->assertSame(PhotoModerationStatus::Approved, $photo->moderation_status);
         $this->assertTrue($photo->is_published);
+    }
+
+    public function test_start_edit_preselects_the_photos_current_line(): void
+    {
+        $moderator = User::factory()->moderator()->create();
+        $line = Line::factory()->create();
+        $station = Station::factory()->create();
+        $line->stations()->attach($station->id);
+        $photo = Photo::factory()->create(['station_id' => $station->id, 'moderation_status' => PhotoModerationStatus::Pending, 'is_published' => false]);
+
+        Livewire::actingAs($moderator)
+            ->test(PhotoModerationQueue::class)
+            ->call('startEdit')
+            ->assertSet('line_id', $line->id);
+    }
+
+    public function test_available_stations_are_filtered_by_the_selected_line(): void
+    {
+        $moderator = User::factory()->moderator()->create();
+        $lineA = Line::factory()->create();
+        $lineB = Line::factory()->create();
+        $stationOnA = Station::factory()->create(['name' => 'Sur ligne A']);
+        $stationOnB = Station::factory()->create(['name' => 'Sur ligne B']);
+        $lineA->stations()->attach($stationOnA->id);
+        $lineB->stations()->attach($stationOnB->id);
+        Photo::factory()->create(['moderation_status' => PhotoModerationStatus::Pending, 'is_published' => false]);
+
+        Livewire::actingAs($moderator)
+            ->test(PhotoModerationQueue::class)
+            ->call('startEdit')
+            ->set('line_id', $lineA->id)
+            ->assertSee('Sur ligne A')
+            ->assertDontSee('Sur ligne B');
+    }
+
+    public function test_changing_the_line_resets_the_selected_station_and_access(): void
+    {
+        $moderator = User::factory()->moderator()->create();
+        $line = Line::factory()->create();
+        $station = Station::factory()->create();
+        $line->stations()->attach($station->id);
+        Photo::factory()->create(['station_id' => $station->id, 'moderation_status' => PhotoModerationStatus::Pending, 'is_published' => false]);
+
+        Livewire::actingAs($moderator)
+            ->test(PhotoModerationQueue::class)
+            ->call('startEdit')
+            ->set('station_id', $station->id)
+            ->assertSet('station_id', $station->id)
+            ->set('line_id', Line::factory()->create()->id)
+            ->assertSet('station_id', null)
+            ->assertSet('station_access_id', null);
     }
 
     public function test_queue_only_shows_photos_that_finished_processing(): void

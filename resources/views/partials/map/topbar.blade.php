@@ -87,9 +87,36 @@
             <x-icons.filter class="h-4 w-4" />
             <span>Filtres</span>
         </button>
-        <a href="{{ auth()->check() ? route('admin.dashboard') : route('login') }}" class="map-glass map-action-button">
-            <x-icons.admin class="h-4 w-4" />
-            <span>Administration</span>
-        </a>
+        @auth
+            <div class="relative" x-data="{ open: false }" x-on:mouseenter="open = true" x-on:mouseleave="open = false">
+                <button type="button" class="map-glass map-action-button" x-bind:aria-expanded="open.toString()">
+                    @if (auth()->user()->avatar_url)
+                        <img src="{{ auth()->user()->avatar_url }}" alt="Photo de profil de {{ auth()->user()->name }}" class="h-6 w-6 rounded-full object-cover">
+                    @else
+                        <span class="grid h-6 w-6 place-items-center rounded-full bg-black/10 text-[11px] font-semibold text-black/60">
+                            {{ Str::of(auth()->user()->name)->substr(0, 1)->upper() }}
+                        </span>
+                    @endif
+                    <span>{{ auth()->user()->name }}</span>
+                </button>
+                <div x-show="open" x-cloak x-transition class="map-glass absolute right-0 top-full z-20 w-52 px-1.5 pb-1.5 pt-2.5 text-left text-sm">
+                    <a href="{{ route('profiles.show', auth()->user()) }}" class="block rounded-md px-3 py-2 font-medium hover:bg-black/5">Mon profil</a>
+                    <a href="{{ route('settings.edit') }}" class="block rounded-md px-3 py-2 font-medium hover:bg-black/5">Paramètres</a>
+                    @if (auth()->user()->canModerate())
+                        <a href="{{ route('admin.dashboard') }}" class="block rounded-md px-3 py-2 font-medium hover:bg-black/5">Administration</a>
+                    @endif
+                    <div class="my-1 border-t border-black/10"></div>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="block w-full rounded-md px-3 py-2 text-left font-medium hover:bg-black/5">Déconnexion</button>
+                    </form>
+                </div>
+            </div>
+        @else
+            <a href="{{ route('login') }}" class="map-glass map-action-button">
+                <x-icons.admin class="h-4 w-4" />
+                <span>Connexion</span>
+            </a>
+        @endauth
     </nav>
 </header>

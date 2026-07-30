@@ -14,10 +14,6 @@
         <p class="text-sm text-black/60">{{ $this->pendingCount }} photo(s) en attente</p>
     </div>
 
-    @if (session('status'))
-        <p class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</p>
-    @endif
-
     @if (! $this->currentPhoto)
         <div class="flex flex-1 flex-col items-center justify-center rounded-lg bg-white text-center shadow-sm ring-1 ring-black/5">
             <p class="text-lg font-semibold">Aucune photo en attente</p>
@@ -158,14 +154,41 @@
                 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4" x-on:click.self="lightbox = false">
                     <button type="button" x-on:click="lightbox = false" class="absolute right-4 top-4 text-white/80 hover:text-white"><x-icons.close class="h-7 w-7" /></button>
                     <div class="flex max-h-full max-w-full flex-col gap-4 overflow-y-auto lg:flex-row lg:items-start" x-on:click.stop>
-                        <div class="max-h-[85vh] max-w-full overflow-auto rounded-lg lg:max-w-[70vw]" x-data="{ zoomed: false }">
+                        <div
+                            class="max-h-[85vh] max-w-full select-none overflow-hidden rounded-lg lg:max-w-[70vw]"
+                            x-data="{
+                                scale: 1, tx: 0, ty: 0, dragging: false, startX: 0, startY: 0,
+                                clampPan() {
+                                    const rect = $el.getBoundingClientRect();
+                                    const maxX = Math.max(0, (this.scale - 1) * rect.width / 2);
+                                    const maxY = Math.max(0, (this.scale - 1) * rect.height / 2);
+                                    this.tx = Math.min(maxX, Math.max(-maxX, this.tx));
+                                    this.ty = Math.min(maxY, Math.max(-maxY, this.ty));
+                                },
+                            }"
+                            x-on:wheel.prevent="
+                                const rect = $el.getBoundingClientRect();
+                                const cx = $event.clientX - rect.left - rect.width / 2;
+                                const cy = $event.clientY - rect.top - rect.height / 2;
+                                const next = Math.min(4, Math.max(1, scale + ($event.deltaY > 0 ? -0.25 : 0.25)));
+                                tx = cx - (cx - tx) * (next / scale);
+                                ty = cy - (cy - ty) * (next / scale);
+                                scale = next;
+                                if (scale === 1) { tx = 0; ty = 0; }
+                                clampPan();
+                            "
+                            x-on:mousedown="if (scale > 1) { dragging = true; startX = $event.clientX - tx; startY = $event.clientY - ty; }"
+                            x-on:mousemove.window="if (dragging) { tx = $event.clientX - startX; ty = $event.clientY - startY; clampPan(); }"
+                            x-on:mouseup.window="dragging = false"
+                        >
                             <img
                                 src="{{ $this->currentPhoto->web_url }}"
                                 alt=""
-                                x-on:click="zoomed = ! zoomed"
-                                x-bind:class="zoomed ? 'max-w-none cursor-zoom-out' : 'max-h-[85vh] max-w-full cursor-zoom-in object-contain'"
-                                x-bind:style="zoomed ? 'width: 200%' : ''"
-                                class="rounded-lg"
+                                draggable="false"
+                                title="Molette pour zoomer, glisser pour déplacer"
+                                x-on:dragstart.prevent
+                                x-bind:style="`transform: translate(${tx}px, ${ty}px) scale(${scale}); cursor: ${scale > 1 ? (dragging ? 'grabbing' : 'grab') : 'zoom-in'}`"
+                                class="max-h-[85vh] max-w-full rounded-lg object-contain"
                             >
                         </div>
                         <div class="w-full flex-none space-y-2 rounded-lg bg-white p-4 text-sm lg:w-72">
@@ -220,8 +243,17 @@
             <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" wire:click.self="cancelEdit">
                 <div class="max-h-[85vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
                     <p class="font-semibold">Modifier la photo</p>
+                    <label class="block text-sm font-semibold">Ligne
+                        <select wire:model.live="line_id" class="mt-1 w-full rounded-md border border-black/15 p-2">
+                            <option value="">Toutes les lignes</option>
+                            @foreach ($this->availableLines as $line)
+                                <option value="{{ $line->id }}" style="background-color: {{ $line->color }}22;">Ligne {{ $line->code }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                     <label class="block text-sm font-semibold">Station
                         <select wire:model.live="station_id" class="mt-1 w-full rounded-md border border-black/15 p-2">
+                            <option value="">Choisir une station</option>
                             @foreach ($this->availableStations as $station)
                                 <option value="{{ $station->id }}">{{ $station->name }}</option>
                             @endforeach
@@ -231,7 +263,7 @@
                         <select wire:model="station_access_id" class="mt-1 w-full rounded-md border border-black/15 p-2">
                             <option value="">Aucun accès</option>
                             @foreach ($this->availableAccessesForSelectedStation as $access)
-                                <option value="{{ $access->id }}">{{ $access->displayName() }}</option>
+                                <option value="{{ $access->id }}">{{ $access->number ? 'N°'.$access->number.' — '.$access->displayName() : $access->displayName() }}</option>
                             @endforeach
                         </select>
                     </label>

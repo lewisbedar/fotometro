@@ -25,6 +25,16 @@ class UserProfileTest extends TestCase
             ->assertSee('Passionné de métro parisien.');
     }
 
+    public function test_profile_page_wires_up_the_photo_lightbox(): void
+    {
+        $user = User::factory()->regularUser()->create();
+
+        $this->get(route('profiles.show', $user))
+            ->assertOk()
+            ->assertSee('fotometroLightbox()', false)
+            ->assertSee('lightbox-overlay', false);
+    }
+
     public function test_profile_stats_and_gallery_only_reflect_the_users_own_published_photos(): void
     {
         $user = User::factory()->regularUser()->create();
