@@ -11,6 +11,46 @@
         </select>
     </div>
 
+    @if ($this->categoryFilters->isNotEmpty())
+        <nav class="mt-5 flex flex-wrap gap-2 text-sm" aria-label="Filtres de galerie">
+            <button
+                type="button"
+                wire:click="selectCategory(null)"
+                @class(['rounded-full px-3 py-1 font-semibold ring-1 ring-black/10', 'bg-black text-white' => ! $this->selectedCategory, 'bg-black/5' => $this->selectedCategory])
+            >
+                Toutes ({{ $this->allPhotos->count() }})
+            </button>
+            @foreach ($this->categoryFilters as $item)
+                <button
+                    type="button"
+                    wire:click="selectCategory('{{ $item['category']->slug }}')"
+                    wire:key="category-{{ $item['category']->id }}"
+                    @class(['rounded-full px-3 py-1 font-semibold ring-1 ring-black/10', 'bg-black text-white' => $this->selectedCategory?->id === $item['category']->id, 'bg-black/5' => $this->selectedCategory?->id !== $item['category']->id])
+                >
+                    {{ $item['category']->name }} ({{ $item['count'] }})
+                </button>
+            @endforeach
+        </nav>
+
+        @if ($this->subCategoryFilters->isNotEmpty())
+            <div class="mt-4 border-t border-black/10 pt-4">
+                <p class="text-sm font-semibold">{{ $this->selectedCategory->name }}</p>
+                <div class="mt-2 flex flex-wrap gap-2 text-sm">
+                    @foreach ($this->subCategoryFilters as $item)
+                        <button
+                            type="button"
+                            wire:click="selectCategory('{{ $item['category']->slug }}')"
+                            wire:key="subcategory-{{ $item['category']->id }}"
+                            @class(['rounded-full px-3 py-1 font-semibold ring-1 ring-black/10', 'bg-black text-white' => $this->selectedCategory?->id === $item['category']->id, 'bg-white hover:bg-black hover:text-white' => $this->selectedCategory?->id !== $item['category']->id])
+                        >
+                            {{ $item['category']->name }} ({{ $item['count'] }})
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+    @endif
+
     <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         @forelse ($photos as $photo)
             <x-photo-link :photo="$photo" wire:key="photo-{{ $photo->id }}" class="group overflow-hidden rounded-md bg-black/[0.03] ring-1 ring-black/10 transition hover:-translate-y-0.5 hover:shadow-md">
@@ -28,7 +68,7 @@
                 </span>
             </x-photo-link>
         @empty
-            <p class="col-span-full rounded-md bg-black/5 p-4 text-sm text-black/65">Aucune photographie publiée pour l’instant.</p>
+            <p class="col-span-full rounded-md bg-black/5 p-4 text-sm text-black/65">Aucune photographie ne correspond à ces filtres.</p>
         @endforelse
     </div>
 

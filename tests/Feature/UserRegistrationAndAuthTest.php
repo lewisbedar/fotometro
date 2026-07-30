@@ -152,6 +152,67 @@ class UserRegistrationAndAuthTest extends TestCase
         $this->assertSame(UserStatus::Approved, $admin->fresh()->status);
     }
 
+    public function test_admin_can_edit_another_users_name_username_email_and_role(): void
+    {
+        $admin = User::factory()->create();
+        $regularUser = User::factory()->regularUser()->create();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.users.update', $regularUser), [
+                'name' => 'Nouveau nom',
+                'username' => 'nouveau-pseudo',
+                'email' => 'nouveau@example.com',
+                'role' => UserRole::Moderator->value,
+            ])
+            ->assertRedirect(route('admin.users.index', ['status' => $regularUser->status->value]));
+
+        $regularUser->refresh();
+        $this->assertSame('Nouveau nom', $regularUser->name);
+        $this->assertSame('nouveau-pseudo', $regularUser->username);
+        $this->assertSame('nouveau@example.com', $regularUser->email);
+        $this->assertSame(UserRole::Moderator, $regularUser->role);
+    }
+
+    public function test_demoting_the_last_admin_is_blocked(): void
+    {
+        $admin = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.users.update', $admin), [
+                'name' => $admin->name,
+                'username' => 'admin-test',
+                'email' => $admin->email,
+                'role' => UserRole::User->value,
+            ])
+            ->assertSessionHasErrors('role');
+
+        $this->assertSame(UserRole::Admin, $admin->fresh()->role);
+    }
+
+    public function test_admin_can_delete_another_users_account(): void
+    {
+        $admin = User::factory()->create();
+        $regularUser = User::factory()->regularUser()->create();
+
+        $this->actingAs($admin)
+            ->delete(route('admin.users.destroy', $regularUser))
+            ->assertRedirect(route('admin.users.index', ['status' => $regularUser->status->value]));
+
+        $this->assertNull(User::find($regularUser->id));
+    }
+
+    public function test_admin_cannot_delete_their_own_account_from_the_accounts_page(): void
+    {
+        $admin = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->delete(route('admin.users.destroy', $admin))
+            ->assertSessionHasErrors('user');
+
+        $this->assertNotNull($admin->fresh());
+    }
+
+
     public function test_password_reset_request_returns_a_generic_message_whether_or_not_the_email_exists(): void
     {
         $user = User::factory()->create();

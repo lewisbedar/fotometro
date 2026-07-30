@@ -800,6 +800,72 @@ class PhotoCatalogTest extends TestCase
         ]);
     }
 
+    public function test_photo_category_seeder_gives_entrees_sorties_and_details_techniques_their_own_root(): void
+    {
+        $this->seed(PhotoCategorySeeder::class);
+
+        $entreesSorties = PhotoCategory::query()->where('slug', 'entrees-et-sorties')->firstOrFail();
+        $this->assertNull($entreesSorties->parent_id);
+        $this->assertDatabaseHas('photo_categories', ['slug' => 'entrees-et-sorties-entree', 'parent_id' => $entreesSorties->id]);
+        $this->assertDatabaseHas('photo_categories', ['slug' => 'entrees-et-sorties-sortie', 'parent_id' => $entreesSorties->id]);
+
+        $detailsTechniques = PhotoCategory::query()->where('slug', 'details-techniques')->firstOrFail();
+        $this->assertNull($detailsTechniques->parent_id);
+        $this->assertDatabaseHas('photo_categories', ['slug' => 'details-techniques-cablage-electricite', 'parent_id' => $detailsTechniques->id]);
+
+        $exterieur = PhotoCategory::query()->where('slug', 'exterieur')->firstOrFail();
+        $this->assertDatabaseMissing('photo_categories', ['slug' => 'exterieur-entree']);
+        $this->assertDatabaseMissing('photo_categories', ['slug' => 'exterieur-sortie']);
+        $this->assertSame(0, PhotoCategory::query()->where('parent_id', $exterieur->id)->where('name', 'Entrée')->count());
+    }
+
+    public function test_admin_can_delete_a_leaf_category_which_untags_photos_without_deleting_them(): void
+    {
+        $admin = User::factory()->create();
+        $category = PhotoCategory::factory()->create();
+        $photo = Photo::factory()->create();
+        $photo->categories()->attach($category->id);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.photo-categories.destroy', $category))
+            ->assertRedirect(route('admin.photo-categories.index'));
+
+        $this->assertDatabaseMissing('photo_categories', ['id' => $category->id]);
+        $this->assertDatabaseMissing('photo_photo_category', ['photo_category_id' => $category->id]);
+        $this->assertNotNull(Photo::find($photo->id));
+    }
+
+    public function test_admin_cannot_delete_a_category_that_still_has_children(): void
+    {
+        $admin = User::factory()->create();
+        $root = PhotoCategory::factory()->create();
+        PhotoCategory::factory()->create(['parent_id' => $root->id]);
+
+        $this->actingAs($admin)
+            ->delete(route('admin.photo-categories.destroy', $root))
+            ->assertSessionHasErrors('category');
+
+        $this->assertDatabaseHas('photo_categories', ['id' => $root->id]);
+    }
+
+    public function test_admin_can_reorder_categories_via_drag_and_drop_endpoint(): void
+    {
+        $admin = User::factory()->create();
+        $first = PhotoCategory::factory()->create(['sort_order' => 0]);
+        $second = PhotoCategory::factory()->create(['sort_order' => 1]);
+        $third = PhotoCategory::factory()->create(['sort_order' => 2]);
+
+        $this->actingAs($admin)
+            ->postJson(route('admin.photo-categories.reorder'), [
+                'ids' => [$third->id, $first->id, $second->id],
+            ])
+            ->assertOk();
+
+        $this->assertSame(0, $third->fresh()->sort_order);
+        $this->assertSame(1, $first->fresh()->sort_order);
+        $this->assertSame(2, $second->fresh()->sort_order);
+    }
+
     public function test_shared_logo_component_is_visible_on_public_auth_and_admin_pages(): void
     {
         $station = Station::factory()->create();
