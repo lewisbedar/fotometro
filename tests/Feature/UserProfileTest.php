@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\ProfileGallery;
 use App\Models\Photo;
+use App\Models\PhotoCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -77,6 +78,29 @@ class UserProfileTest extends TestCase
         Livewire::test(ProfileGallery::class, ['user' => $user])
             ->set('sort', 'popular')
             ->assertSeeInOrder([$mostViewed->publicLabel(), $lessViewed->publicLabel()]);
+    }
+
+    public function test_gallery_filters_by_root_and_subcategory(): void
+    {
+        $user = User::factory()->regularUser()->create();
+        $root = PhotoCategory::factory()->create(['name' => 'Architecture', 'sort_order' => 0]);
+        $child = PhotoCategory::factory()->create(['name' => 'Carrelage', 'parent_id' => $root->id, 'sort_order' => 0]);
+
+        $tagged = Photo::factory()->create(['user_id' => $user->id, 'title' => 'Photo carrelage']);
+        $tagged->categories()->attach($child->id);
+        $untagged = Photo::factory()->create(['user_id' => $user->id, 'title' => 'Photo sans categorie']);
+
+        $component = Livewire::test(ProfileGallery::class, ['user' => $user])
+            ->assertSee($tagged->publicLabel())
+            ->assertSee($untagged->publicLabel());
+
+        $component->call('selectCategory', $root->slug)
+            ->assertSee($tagged->publicLabel())
+            ->assertDontSee($untagged->publicLabel());
+
+        $component->call('selectCategory', $child->slug)
+            ->assertSee($tagged->publicLabel())
+            ->assertDontSee($untagged->publicLabel());
     }
 
     public function test_owner_can_update_their_bio(): void

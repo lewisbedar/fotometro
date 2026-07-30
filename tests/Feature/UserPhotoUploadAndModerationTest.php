@@ -223,6 +223,36 @@ class UserPhotoUploadAndModerationTest extends TestCase
             ->assertSet('currentPhotoId', null);
     }
 
+    public function test_a_moderator_never_sees_their_own_pending_photos_in_the_queue(): void
+    {
+        $moderator = User::factory()->moderator()->create();
+
+        $ownPhoto = Photo::factory()->create([
+            'user_id' => $moderator->id,
+            'moderation_status' => PhotoModerationStatus::Pending,
+            'is_published' => false,
+        ]);
+        $othersPhoto = Photo::factory()->create([
+            'moderation_status' => PhotoModerationStatus::Pending,
+            'is_published' => false,
+        ]);
+
+        Livewire::actingAs($moderator)
+            ->test(PhotoModerationQueue::class)
+            ->assertSet('currentPhotoId', $othersPhoto->id)
+            ->assertSet('pendingCount', 1);
+
+        // With only their own photo pending, the queue is empty for them.
+        $othersPhoto->forceFill(['moderation_status' => PhotoModerationStatus::Approved, 'is_published' => true])->save();
+
+        Livewire::actingAs($moderator)
+            ->test(PhotoModerationQueue::class)
+            ->assertSet('currentPhotoId', null)
+            ->assertSet('pendingCount', 0);
+
+        $this->assertSame(PhotoModerationStatus::Pending, $ownPhoto->fresh()->moderation_status);
+    }
+
     public function test_admin_bulk_import_wizard_still_auto_approves_photos(): void
     {
         Storage::fake('local');

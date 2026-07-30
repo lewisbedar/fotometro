@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\PhotoCategory;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -14,7 +15,12 @@ class PhotoCategoryController extends Controller
     public function index(): View
     {
         return view('admin.photo-categories.index', [
-            'categories' => PhotoCategory::query()->with('parent')->orderBy('sort_order')->orderBy('name')->paginate(30),
+            'roots' => PhotoCategory::query()
+                ->whereNull('parent_id')
+                ->with(['children' => fn ($query) => $query->orderBy('sort_order')->orderBy('name')])
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(),
         ]);
     }
 
@@ -46,6 +52,32 @@ class PhotoCategoryController extends Controller
         $photoCategory->update($this->validated($request, $photoCategory));
 
         return redirect()->route('admin.photo-categories.index')->with('status', 'Catégorie mise à jour.');
+    }
+
+    public function destroy(PhotoCategory $photoCategory): RedirectResponse
+    {
+        if ($photoCategory->children()->exists()) {
+            return back()->withErrors(['category' => 'Cette catégorie a des sous-catégories : supprimez-les ou déplacez-les avant de la supprimer.']);
+        }
+
+        $name = $photoCategory->name;
+        $photoCategory->delete();
+
+        return redirect()->route('admin.photo-categories.index')->with('status', "Catégorie « {$name} » supprimée.");
+    }
+
+    public function reorder(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer', 'exists:photo_categories,id'],
+        ]);
+
+        foreach ($data['ids'] as $index => $id) {
+            PhotoCategory::query()->whereKey($id)->update(['sort_order' => $index]);
+        }
+
+        return response()->json(['status' => 'ok']);
     }
 
     private function validated(Request $request, ?PhotoCategory $category = null): array

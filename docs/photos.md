@@ -14,7 +14,7 @@ Les URLs publiques sont produites par les accesseurs `web_url` et `thumbnail_url
 
 ## Catégories
 
-`photo_categories` gère une arborescence éditable : Extérieur, Intérieur, Signalétique, Architecture et décoration, Vie et évolution.
+`photo_categories` gère une arborescence éditable (créer, modifier, supprimer, réordonner par glisser-déposer depuis l'admin) : Extérieur, Intérieur, Entrées et sorties, Signalétique, Architecture et décoration, Détails techniques, Vie et évolution.
 
 Le seeder `PhotoCategorySeeder` est idempotent : il conserve les slugs ASCII existants et met à jour les noms accentués.
 
@@ -68,7 +68,7 @@ Règle « suffisante » (`StationPhotoCoverageService::essentialCoverage()`) : u
 
 `StationCoverageUpdater` recalcule ceci aux mêmes points d'accroche qu'avant (création, mise à jour, suppression et actions groupées de photos). La commande `fotometro:recalculate-coverage` permet un recalcul rétroactif complet.
 
-Le détail par thématique (`categoryBreakdown()` : Extérieur, Intérieur, Signalétique, Architecture et décoration, Vie et évolution) et par accès (`accessBreakdown()`) reste calculé et exposé par `summarize()` à titre indicatif (« ce qu'il manque »), mais ne pèse plus dans le pourcentage global.
+Le détail par thématique (`categoryBreakdown()` : Extérieur, Intérieur, Entrées et sorties, Signalétique, Architecture et décoration, Détails techniques, Vie et évolution) et par accès (`accessBreakdown()`) reste calculé et exposé par `summarize()` à titre indicatif (« ce qu'il manque »), mais ne pèse plus dans le pourcentage global.
 
 ## Consultation publique
 

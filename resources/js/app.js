@@ -2729,6 +2729,48 @@ window.fotometroStationAccessMap = function fotometroStationAccessMap(options) {
     };
 };
 
+window.fotometroCategoryDragSort = function fotometroCategoryDragSort(endpoint) {
+    return {
+        dragEl: null,
+
+        start(event) {
+            this.dragEl = event.currentTarget;
+            event.dataTransfer.effectAllowed = 'move';
+        },
+
+        over(event) {
+            const target = event.currentTarget;
+
+            if (! this.dragEl || target === this.dragEl) {
+                return;
+            }
+
+            const rect = target.getBoundingClientRect();
+            const before = (event.clientY - rect.top) < rect.height / 2;
+            target.parentNode.insertBefore(this.dragEl, before ? target : target.nextSibling);
+        },
+
+        async drop() {
+            if (! this.dragEl) {
+                return;
+            }
+
+            const ids = Array.from(this.dragEl.parentNode.children).map((el) => el.dataset.categoryId);
+            this.dragEl = null;
+
+            await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                },
+                body: JSON.stringify({ ids }),
+            });
+        },
+    };
+};
+
 window.fotometroLightbox = function fotometroLightbox() {
     return {
         open: false,

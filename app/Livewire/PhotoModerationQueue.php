@@ -64,7 +64,7 @@ class PhotoModerationQueue extends Component
     #[Computed]
     public function pendingCount(): int
     {
-        return Photo::query()->awaitingModeration()->count();
+        return Photo::query()->awaitingModeration(auth()->id())->count();
     }
 
     #[Computed]
@@ -163,7 +163,7 @@ class PhotoModerationQueue extends Component
         $this->rejecting = false;
         $this->reset(['rejection_reason_id', 'custom_rejection_note', 'categorySearch', 'line_id']);
 
-        $this->currentPhotoId = Photo::query()->awaitingModeration()->first()?->id;
+        $this->currentPhotoId = Photo::query()->awaitingModeration(auth()->id())->first()?->id;
         unset($this->currentPhoto);
     }
 

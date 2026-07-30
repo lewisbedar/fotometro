@@ -121,8 +121,9 @@ Route::middleware(['auth', 'approved', 'role:admin,moderator'])->group(function 
 });
 
 Route::middleware(['auth', 'approved', 'role:admin'])->group(function (): void {
+    Route::post('/admin/photo-categories/reorder', [PhotoCategoryController::class, 'reorder'])->name('admin.photo-categories.reorder');
     Route::resource('/admin/photo-categories', PhotoCategoryController::class)
-        ->except(['show', 'destroy'])
+        ->except(['show'])
         ->names('admin.photo-categories');
     Route::get('/admin/photos/import', [PhotoController::class, 'create'])->name('admin.photos.import');
     Route::post('/admin/photos/bulk', [PhotoController::class, 'bulk'])->name('admin.photos.bulk');
@@ -136,6 +137,9 @@ Route::middleware(['auth', 'approved', 'role:admin'])->group(function (): void {
         ->names('admin.photos');
 
     Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');
+    Route::get('/admin/users/{user}/edit', [UserController::class, 'edit'])->name('admin.users.edit');
+    Route::patch('/admin/users/{user}', [UserController::class, 'update'])->name('admin.users.update');
+    Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
     Route::post('/admin/users/{user}/approve', [UserController::class, 'approve'])->name('admin.users.approve');
     Route::post('/admin/users/{user}/reject', [UserController::class, 'reject'])->name('admin.users.reject');
 

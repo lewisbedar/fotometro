@@ -12,12 +12,14 @@ class PhotoCategorySeeder extends Seeder
         $tree = [
             ['slug' => 'exterieur', 'name' => 'Extérieur', 'children' => [
                 ['slug' => 'exterieur-vue-generale', 'name' => 'Vue générale'],
-                ['slug' => 'exterieur-entree', 'name' => 'Entrée'],
-                ['slug' => 'exterieur-sortie', 'name' => 'Sortie'],
                 ['slug' => 'exterieur-environnement-urbain', 'name' => 'Environnement urbain'],
                 ['slug' => 'exterieur-facade-ou-edicule', 'name' => 'Façade ou édicule'],
                 ['slug' => 'exterieur-totem-ou-enseigne', 'name' => 'Totem ou enseigne'],
                 ['slug' => 'exterieur-acces-pmr', 'name' => 'Accès PMR'],
+            ]],
+            ['slug' => 'entrees-et-sorties', 'name' => 'Entrées et sorties', 'children' => [
+                ['slug' => 'entrees-et-sorties-entree', 'name' => 'Entrée'],
+                ['slug' => 'entrees-et-sorties-sortie', 'name' => 'Sortie'],
             ]],
             ['slug' => 'interieur', 'name' => 'Intérieur', 'children' => [
                 ['slug' => 'interieur-hall', 'name' => 'Hall'],
@@ -56,6 +58,13 @@ class PhotoCategorySeeder extends Seeder
                 ['slug' => 'vie-et-evolution-publicite', 'name' => 'Publicité'],
                 ['slug' => 'vie-et-evolution-activite', 'name' => 'Activité'],
                 ['slug' => 'vie-et-evolution-archive', 'name' => 'Archive'],
+            ]],
+            ['slug' => 'details-techniques', 'name' => 'Détails techniques', 'children' => [
+                ['slug' => 'details-techniques-cablage-electricite', 'name' => 'Câblage et électricité'],
+                ['slug' => 'details-techniques-ventilation', 'name' => 'Ventilation'],
+                ['slug' => 'details-techniques-securite', 'name' => 'Équipement de sécurité'],
+                ['slug' => 'details-techniques-sonorisation', 'name' => 'Sonorisation et annonces'],
+                ['slug' => 'details-techniques-horloge', 'name' => 'Horloge et affichage horaire'],
             ]],
         ];
 

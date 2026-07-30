@@ -144,11 +144,17 @@ class Photo extends Model
             ->whereHas('station', fn (Builder $station) => $station->where('is_active', true));
     }
 
-    public function scopeAwaitingModeration(Builder $query): Builder
+    public function scopeAwaitingModeration(Builder $query, ?int $excludingUserId = null): Builder
     {
         return $query
             ->where('moderation_status', PhotoModerationStatus::Pending)
             ->where('processing_status', PhotoProcessingStatus::Ready)
+            // A moderator shouldn't moderate their own submissions — excludes
+            // only photos submitted by that user, not photos with no
+            // submitter (admin-imported photos have no user_id at all).
+            ->when($excludingUserId, fn (Builder $q) => $q->where(
+                fn (Builder $inner) => $inner->whereNull('user_id')->orWhere('user_id', '!=', $excludingUserId)
+            ))
             ->orderBy('created_at');
     }
 
