@@ -4,7 +4,6 @@
             <p class="text-sm font-semibold uppercase tracking-[0.16em] text-black/55">Administration</p>
             <h1 class="mt-2 text-3xl font-semibold">Comptes utilisateurs</h1>
         </div>
-        @if (session('status')) <p class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</p> @endif
 
         <nav class="flex flex-wrap gap-2 text-sm">
             @foreach ($statuses as $status)

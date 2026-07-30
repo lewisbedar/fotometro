@@ -4,11 +4,7 @@
     :canonical="route('profiles.show', $profileUser)"
     :full-width="true"
 >
-    <div class="space-y-6">
-        @if (session('status'))
-            <p class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</p>
-        @endif
-
+    <div class="space-y-6" x-data="fotometroLightbox()" x-on:click="handleClick($event)">
         <header class="rounded-lg bg-white p-6 shadow-sm ring-1 ring-black/5" x-data="{ editingProfile: false }">
             <div class="flex flex-col gap-6 sm:flex-row sm:items-start">
                 @if ($profileUser->avatar_url)
@@ -139,5 +135,7 @@
         </div>
 
         <livewire:profile-gallery :user="$profileUser" :key="'profile-gallery-'.$profileUser->id" />
+
+        <x-photo-lightbox />
     </div>
 </x-layouts.app>

@@ -52,8 +52,8 @@ class MapExplorerTest extends TestCase
             ->assertSee('map-about-modal', false)
             ->assertSee('Île-de-France Mobilités')
             ->assertSee('OpenStreetMap contributors')
-            ->assertSee('Entrees et sorties')
-            ->assertSee('Bientot disponible');
+            ->assertSee('Entrées et sorties')
+            ->assertSee('Bientôt disponible');
     }
 
     public function test_line_diagram_svg_is_guarded_by_layout_and_not_rendered_with_svg_x_for(): void

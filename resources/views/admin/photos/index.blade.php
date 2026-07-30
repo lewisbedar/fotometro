@@ -4,7 +4,6 @@
             <div><p class="text-sm font-semibold uppercase tracking-[0.16em] text-black/55">Administration</p><h1 class="mt-2 text-3xl font-semibold">Photos</h1></div>
             <a href="{{ route('admin.photos.import') }}" class="flex items-center gap-2 rounded-md bg-black px-4 py-2 font-semibold text-white"><x-icons.add class="h-4 w-4" /> Importer</a>
         </div>
-        @if (session('status')) <p class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</p> @endif
         <section class="grid gap-3 rounded-lg bg-white p-4 text-sm shadow-sm ring-1 ring-black/5 sm:grid-cols-4">
             <div><p class="text-black/55">Publiées</p><p class="text-2xl font-semibold">{{ $photoStats['published'] }}</p></div>
             <div><p class="text-black/55">Brouillons</p><p class="text-2xl font-semibold">{{ $photoStats['drafts'] }}</p></div>

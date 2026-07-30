@@ -2,10 +2,6 @@
     <div class="mx-auto max-w-xl space-y-6">
         <a href="{{ route('profiles.show', $settingsUser) }}" class="block text-right text-sm font-medium text-black/65 hover:text-black hover:underline">Retour à mon profil</a>
 
-        @if (session('status'))
-            <p class="rounded-md bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</p>
-        @endif
-
         <div class="rounded-lg bg-white p-6 shadow-sm ring-1 ring-black/5">
             <h1 class="text-2xl font-semibold">Paramètres du compte</h1>
 
