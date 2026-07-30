@@ -17,6 +17,7 @@
                 @if($photo->stationAccess)
                     <span class="text-black/65">· {{ $photo->stationAccess->displayName() }}</span>
                 @endif
+                <span class="text-black/65">· {{ $photo->views_count }} vue{{ $photo->views_count == 1 ? '' : 's' }}</span>
             </div>
         </header>
 

@@ -54,7 +54,8 @@
                                 </nav>
                             @endif
                             <a href="{{ route('photos.upload.create') }}" class="rounded-md border border-black/15 bg-white px-3 py-2 text-xs font-medium hover:bg-black hover:text-white sm:text-sm">Ajouter une photo</a>
-                            <a href="{{ route('home') }}" class="text-xs font-medium text-[#151515] hover:underline sm:text-sm">Retour à la carte</a>
+                            <a href="{{ route('profiles.show', auth()->user()) }}" class="text-xs font-medium text-[#151515] hover:underline sm:text-sm {{ request()->routeIs('profiles.show') ? 'underline' : '' }}">Mon profil</a>
+                            <a href="{{ route('settings.edit') }}" class="text-xs font-medium text-[#151515] hover:underline sm:text-sm {{ request()->routeIs('settings.edit') ? 'underline' : '' }}">Paramètres</a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button class="rounded-md border border-black/15 bg-white px-3 py-2 text-xs font-medium hover:bg-black hover:text-white sm:text-sm">
@@ -62,7 +63,6 @@
                                 </button>
                             </form>
                         @else
-                            <a href="{{ route('home') }}" class="text-xs font-medium text-[#151515] hover:underline sm:text-sm">Retour à la carte</a>
                             <a href="{{ route('login') }}" class="rounded-md border border-black/15 bg-white px-3 py-2 text-xs font-medium hover:bg-black hover:text-white sm:text-sm">
                                 Connexion
                             </a>
