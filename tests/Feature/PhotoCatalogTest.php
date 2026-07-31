@@ -708,6 +708,35 @@ class PhotoCatalogTest extends TestCase
         $this->assertStringNotContainsString('originals', $this->get(route('photos.show', $ready))->getContent());
     }
 
+    public function test_photo_page_shows_an_edit_link_only_to_admins_and_moderators(): void
+    {
+        $photo = Photo::factory()->create([
+            'processing_status' => PhotoProcessingStatus::Ready,
+            'is_published' => true,
+            'moderation_status' => PhotoModerationStatus::Approved,
+        ]);
+        $editUrl = route('admin.photos.show', $photo);
+
+        $this->get(route('photos.show', $photo))
+            ->assertOk()
+            ->assertDontSee($editUrl, false);
+
+        $this->actingAs(User::factory()->regularUser()->create())
+            ->get(route('photos.show', $photo))
+            ->assertOk()
+            ->assertDontSee($editUrl, false);
+
+        $this->actingAs(User::factory()->moderator()->create())
+            ->get(route('photos.show', $photo))
+            ->assertOk()
+            ->assertSee($editUrl, false);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('photos.show', $photo))
+            ->assertOk()
+            ->assertSee($editUrl, false);
+    }
+
     public function test_viewing_a_photo_increments_its_view_count_once_per_session(): void
     {
         $photo = Photo::factory()->create();
@@ -871,17 +900,27 @@ class PhotoCatalogTest extends TestCase
         $station = Station::factory()->create();
         $photo = Photo::factory()->create(['station_id' => $station->id]);
 
+        // The map popup reads cover_photo_url from the cached /api/map
+        // payload — setting/unsetting the cover has to invalidate it,
+        // otherwise the popup keeps showing the previous (or no) cover
+        // photo until the cache naturally expires.
+        Cache::put('fotometro.public-map.v1', ['stale' => true], 300);
+
         $this->actingAs(User::factory()->create())
             ->post(route('admin.photos.set-cover', $photo))
             ->assertRedirect();
 
         $this->assertSame($photo->id, $station->fresh()->cover_photo_id);
+        $this->assertFalse(Cache::has('fotometro.public-map.v1'));
+
+        Cache::put('fotometro.public-map.v1', ['stale' => true], 300);
 
         $this->actingAs(User::factory()->create())
             ->delete(route('admin.photos.unset-cover', $photo))
             ->assertRedirect();
 
         $this->assertNull($station->fresh()->cover_photo_id);
+        $this->assertFalse(Cache::has('fotometro.public-map.v1'));
     }
 
     public function test_unpublished_photo_cannot_be_set_as_cover(): void

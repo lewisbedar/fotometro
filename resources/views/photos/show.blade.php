@@ -4,7 +4,12 @@
     :canonical="route('photos.show', $photo)"
 >
     <article class="space-y-8">
-        <a href="{{ route('stations.show', $photo->station) }}" class="text-sm font-medium text-black/65 hover:text-black hover:underline">Retour à {{ $photo->station->name }}</a>
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <a href="{{ route('stations.show', $photo->station) }}" class="text-sm font-medium text-black/65 hover:text-black hover:underline">Retour à {{ $photo->station->name }}</a>
+            @can('moderate-photos')
+                <a href="{{ route('admin.photos.show', $photo) }}" class="flex items-center gap-2 rounded-md border border-black/15 bg-white px-3 py-1.5 text-sm font-semibold hover:bg-black hover:text-white"><x-icons.edit class="h-4 w-4" /> Modifier</a>
+            @endcan
+        </div>
 
         <header>
             <p class="text-sm font-semibold uppercase tracking-[0.16em] text-black/55">Photographie</p>

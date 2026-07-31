@@ -142,21 +142,23 @@ class PhotoController extends Controller
         return back()->with('status', 'Photo dépubliée.');
     }
 
-    public function setCover(Photo $photo): RedirectResponse
+    public function setCover(Photo $photo, PhotoCacheInvalidator $cacheInvalidator): RedirectResponse
     {
         if (! Photo::query()->publiclyVisible()->whereKey($photo->id)->exists()) {
             return back()->with('status', 'Seule une photo publiée peut être définie comme photo de couverture.');
         }
 
         $photo->station->forceFill(['cover_photo_id' => $photo->id])->save();
+        $cacheInvalidator->forgetPublicCaches();
 
         return back()->with('status', 'Photo de couverture définie.');
     }
 
-    public function unsetCover(Photo $photo): RedirectResponse
+    public function unsetCover(Photo $photo, PhotoCacheInvalidator $cacheInvalidator): RedirectResponse
     {
         if ($photo->station->cover_photo_id === $photo->id) {
             $photo->station->forceFill(['cover_photo_id' => null])->save();
+            $cacheInvalidator->forgetPublicCaches();
         }
 
         return back()->with('status', 'Photo de couverture retirée.');
