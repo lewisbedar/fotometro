@@ -43,6 +43,12 @@ class PhotoProcessor
             $web = $this->resize($image, imagesx($image), imagesy($image), (int) config('fotometro.photos.web_max_width', 2200));
             $thumb = $this->resize($image, imagesx($image), imagesy($image), (int) config('fotometro.photos.thumbnail_width', 600));
 
+            // Only the (already resolution-capped) web version is marked, not
+            // the thumbnail — a casual-deterrence watermark on a 600px grid
+            // preview would just be visual clutter for little benefit, and
+            // this is about discouraging reuse of the size worth reusing.
+            $this->applyWatermark($web);
+
             $this->saveImage($web, $public->path($webPath), $photo->mime_type, (int) config('fotometro.photos.web_quality', 85));
             $this->saveImage($thumb, $public->path($thumbnailPath), $photo->mime_type, (int) config('fotometro.photos.thumbnail_quality', 82));
 
@@ -138,6 +144,64 @@ class PhotoProcessor
         imagecopyresampled($resized, $image, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
 
         return $resized;
+    }
+
+    /**
+     * A light, casual-deterrence watermark burned into the pixels — unlike a
+     * CSS overlay, this stays on the image however it's obtained (saved via
+     * right-click, fetched from the direct URL, grabbed from devtools).
+     * Uses GD's built-in bitmap font rather than a bundled .ttf: one less
+     * asset to deploy/miss on a shared host, and legibility here only
+     * matters enough to make the source identifiable, not to look polished.
+     * ASCII only — the built-in font mangles multi-byte UTF-8 (accents).
+     */
+    private function applyWatermark(\GdImage $image): void
+    {
+        if (! config('fotometro.photos.watermark.enabled', false)) {
+            return;
+        }
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $text = config('fotometro.photos.watermark.text') ?: (parse_url(config('app.url', ''), PHP_URL_HOST) ?: 'fotometro');
+        $opacity = max(0.0, min(1.0, (float) config('fotometro.photos.watermark.opacity', 0.45)));
+
+        $font = 5;
+        $textWidth = imagefontwidth($font) * strlen($text);
+        $textHeight = imagefontheight($font);
+
+        // Scale the fixed-size bitmap font relative to the image width so
+        // the watermark stays legible on a 2200px photo without dominating
+        // a smaller one.
+        $scale = max(1, (int) round($width / 900));
+        $scaledWidth = $textWidth * $scale;
+        $scaledHeight = $textHeight * $scale;
+
+        $glyphs = imagecreatetruecolor($textWidth, $textHeight);
+        imagealphablending($glyphs, false);
+        imagesavealpha($glyphs, true);
+        imagefilledrectangle($glyphs, 0, 0, $textWidth - 1, $textHeight - 1, imagecolorallocatealpha($glyphs, 0, 0, 0, 127));
+        imagestring($glyphs, $font, 0, 0, $text, imagecolorallocatealpha($glyphs, 255, 255, 255, (int) round(127 * (1 - $opacity))));
+
+        $overlay = imagecreatetruecolor($scaledWidth, $scaledHeight);
+        imagealphablending($overlay, false);
+        imagesavealpha($overlay, true);
+        imagefilledrectangle($overlay, 0, 0, $scaledWidth - 1, $scaledHeight - 1, imagecolorallocatealpha($overlay, 0, 0, 0, 127));
+        imagecopyresampled($overlay, $glyphs, 0, 0, 0, 0, $scaledWidth, $scaledHeight, $textWidth, $textHeight);
+        imagedestroy($glyphs);
+
+        $padding = max(10, (int) round($width * 0.015));
+        [$destX, $destY] = match (config('fotometro.photos.watermark.position', 'bottom-right')) {
+            'bottom-left' => [$padding, $height - $scaledHeight - $padding],
+            'top-right' => [$width - $scaledWidth - $padding, $padding],
+            'top-left' => [$padding, $padding],
+            default => [$width - $scaledWidth - $padding, $height - $scaledHeight - $padding],
+        };
+
+        imagealphablending($image, true);
+        imagecopy($image, $overlay, $destX, $destY, 0, 0, $scaledWidth, $scaledHeight);
+        imagealphablending($image, false);
+        imagedestroy($overlay);
     }
 
     private function saveImage(\GdImage $image, string $path, string $mime, int $quality): void

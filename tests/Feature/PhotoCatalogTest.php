@@ -75,6 +75,85 @@ class PhotoCatalogTest extends TestCase
         Storage::disk('public')->assertMissing($photo->original_path);
     }
 
+    public function test_processing_bakes_a_watermark_into_the_web_image_but_not_the_thumbnail(): void
+    {
+        if (! function_exists('imagecreatetruecolor')) {
+            $this->markTestSkipped('GD is not available.');
+        }
+
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $solidColorJpeg = function (): UploadedFile {
+            $image = imagecreatetruecolor(1200, 800);
+            imagefill($image, 0, 0, imagecolorallocate($image, 40, 90, 180));
+            $path = tempnam(sys_get_temp_dir(), 'wm').'.jpg';
+            imagejpeg($image, $path, 95);
+            imagedestroy($image);
+
+            return new UploadedFile($path, 'solid.jpg', 'image/jpeg', null, true);
+        };
+
+        $station = Station::factory()->create();
+
+        config(['fotometro.photos.watermark.enabled' => true, 'fotometro.photos.watermark.text' => 'FOTOMETRO-TEST']);
+        $watermarked = app(PhotoImporter::class)->import($solidColorJpeg(), ['station_id' => $station->id, 'license' => 'all_rights_reserved']);
+        app(PhotoProcessor::class)->process($watermarked);
+        $watermarked->refresh();
+
+        $this->assertSame(PhotoProcessingStatus::Ready, $watermarked->processing_status);
+
+        $publicDisk = Storage::disk('public');
+        $webImage = imagecreatefromjpeg($publicDisk->path($watermarked->web_path));
+        $thumbImage = imagecreatefromjpeg($publicDisk->path($watermarked->thumbnail_path));
+        $backgroundRgb = [40, 90, 180];
+
+        // A semi-transparent white watermark shifts some pixels in the
+        // bottom-right corner region well beyond ordinary JPEG compression
+        // noise (±a few units); the thumbnail is deliberately left clean
+        // (see PhotoProcessor::process()). Scanning a region rather than one
+        // exact pixel avoids coupling the test to the watermark's precise
+        // computed size/padding.
+        $this->assertTrue($this->cornerRegionDiffersFrom($webImage, $backgroundRgb), 'Expected the web image\'s corner region to show watermark pixels.');
+        $this->assertFalse($this->cornerRegionDiffersFrom($thumbImage, $backgroundRgb), 'Expected the thumbnail to stay unwatermarked.');
+
+        config(['fotometro.photos.watermark.enabled' => false]);
+        $clean = app(PhotoImporter::class)->import($solidColorJpeg(), ['station_id' => $station->id, 'license' => 'all_rights_reserved']);
+        app(PhotoProcessor::class)->process($clean);
+        $clean->refresh();
+
+        $cleanWebImage = imagecreatefromjpeg($publicDisk->path($clean->web_path));
+        $this->assertFalse($this->cornerRegionDiffersFrom($cleanWebImage, $backgroundRgb), 'Expected no watermark when disabled.');
+    }
+
+    private function cornerRegionDiffersFrom(\GdImage $image, array $backgroundRgb): bool
+    {
+        $width = imagesx($image);
+        $height = imagesy($image);
+
+        for ($x = $width - 60; $x < $width - 5; $x += 4) {
+            for ($y = $height - 40; $y < $height - 5; $y += 4) {
+                if ($this->colorDistance($this->pixelRgb($image, $x, $y), $backgroundRgb) > 20) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function pixelRgb(\GdImage $image, int $x, int $y): array
+    {
+        $rgb = imagecolorsforindex($image, imagecolorat($image, $x, $y));
+
+        return [$rgb['red'], $rgb['green'], $rgb['blue']];
+    }
+
+    private function colorDistance(array $a, array $b): float
+    {
+        return sqrt((($a[0] - $b[0]) ** 2) + (($a[1] - $b[1]) ** 2) + (($a[2] - $b[2]) ** 2));
+    }
+
     public function test_publish_when_ready_auto_publishes_only_after_successful_processing(): void
     {
         if (! function_exists('imagecreatetruecolor')) {

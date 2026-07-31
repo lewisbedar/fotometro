@@ -24,7 +24,7 @@
         <template x-if="photo">
             <div class="lightbox-body">
                 <div class="lightbox-image-wrap">
-                    <img :src="photo.image" :alt="photo.title" class="lightbox-image">
+                    <img :src="photo.image" :alt="photo.title" class="lightbox-image photo-protected" draggable="false">
                 </div>
                 <div class="lightbox-info">
                     <h3 x-text="photo.title"></h3>

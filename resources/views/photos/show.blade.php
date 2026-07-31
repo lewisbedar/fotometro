@@ -28,7 +28,7 @@
 
         @if ($photo->web_url)
             <figure class="rounded-lg bg-white p-4 shadow-sm ring-1 ring-black/5">
-                <img src="{{ $photo->web_url }}" alt="{{ $photo->publicLabel() }}" class="mx-auto max-h-[78vh] rounded object-contain">
+                <img src="{{ $photo->web_url }}" alt="{{ $photo->publicLabel() }}" class="mx-auto max-h-[78vh] rounded object-contain photo-protected" draggable="false">
                 <figcaption class="mt-3 text-sm text-black/65">{{ $photo->copyright_notice }}</figcaption>
             </figure>
         @endif

@@ -3091,3 +3091,22 @@ initStaticMaps();
 // later by Alpine's x-if (e.g. a modal's map preview, mounted fresh each
 // time it opens) needs this exposed so it can be re-run on demand.
 window.fotometroRefreshStaticMaps = initStaticMaps;
+
+// Casual deterrence only — disables the browser's native "save image" /
+// drag-out affordances on photo <img>s (right-click menu, drag-and-drop).
+// Delegated on document so it also covers images added later (lightbox,
+// Livewire re-renders) without needing to rebind per element. Doesn't (and
+// can't) stop a determined user — devtools or a screenshot still work —
+// the actual protection against reuse is the watermark baked into the
+// image itself server-side.
+document.addEventListener('contextmenu', (event) => {
+    if (event.target.closest('.photo-protected')) {
+        event.preventDefault();
+    }
+});
+
+document.addEventListener('dragstart', (event) => {
+    if (event.target.closest('.photo-protected')) {
+        event.preventDefault();
+    }
+});

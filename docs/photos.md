@@ -79,3 +79,13 @@ La fiche station est la porte d’entrée principale du catalogue photographique
 `Station::cover_photo_id` (nullable, FK vers `photos`, `nullOnDelete`) identifie la photo qui représente la station : elle passe en premier dans la mosaïque et alimente la vignette affichée dans le popup de la carte publique. Seule une photo publiquement visible (`Photo::publiclyVisible()`) peut être définie comme couverture (bouton sur la fiche admin de la photo) ; dépublier la photo de couverture la retire automatiquement (`PhotoPublicationService::unpublish()`).
 
 La page photo conserve la navigation précédente/suivante dans la même station uniquement, en respectant l’ordre public `sort_order`, `taken_at`, `id`. Les métadonnées vides ne sont pas affichées, et les coordonnées GPS EXIF de la photo ne sont pas exposées publiquement.
+
+## Protection contre la réutilisation
+
+Dissuasion « casual » uniquement — rien de tout cela n'empêche une capture d'écran ou un utilisateur déterminé (outils de développement du navigateur) :
+
+- Clic droit et glisser-déposer désactivés sur toutes les images de photos publiques (classe CSS `photo-protected`, gérée par un écouteur délégué dans `app.js`).
+- Filigrane léger incrusté directement dans les pixels de la version web (`PhotoProcessor::applyWatermark()`), donc présent quelle que soit la façon dont l'image est récupérée (URL directe, clic droit, outils de dev) — contrairement à un filigrane en CSS qui n'apparaîtrait que dans le rendu de la page. N'affecte jamais l'original (privé) ni les miniatures (`thumbnail_path`).
+- Piloté par `FOTOMETRO_PHOTO_WATERMARK_ENABLED` (activé par défaut), `FOTOMETRO_PHOTO_WATERMARK_TEXT` (par défaut : l'hôte de `APP_URL`, donc pas de configuration nécessaire en pratique), `FOTOMETRO_PHOTO_WATERMARK_POSITION` (`bottom-right` par défaut) et `FOTOMETRO_PHOTO_WATERMARK_OPACITY` (`0.45` par défaut).
+- Utilise la police bitmap intégrée à GD (pas de `.ttf` à déployer) — texte en ASCII uniquement, les caractères accentués s'afficheraient mal.
+- Rétroactif uniquement après retraitement : les photos déjà publiées avant l'activation ne portent pas le filigrane tant qu'elles ne sont pas retraitées (bouton « Traiter » sur la fiche admin, ou action groupée « Traiter »/« Réessayer » depuis la liste).

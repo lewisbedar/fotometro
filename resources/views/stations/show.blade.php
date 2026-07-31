@@ -86,7 +86,7 @@
                     </div>
                 @elseif ($featuredPhotos->count() === 1)
                     <x-photo-link :photo="$featuredPhotos->first()" class="block overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-black/5">
-                        <img src="{{ $featuredPhotos->first()->web_url }}" alt="{{ $featuredPhotos->first()->publicLabel() }}" class="max-h-[560px] w-full object-cover">
+                        <img src="{{ $featuredPhotos->first()->web_url }}" alt="{{ $featuredPhotos->first()->publicLabel() }}" class="max-h-[560px] w-full object-cover photo-protected" draggable="false">
                         <span class="block p-4 text-sm text-black/65">{{ $featuredPhotos->first()->publicLabel() }}</span>
                     </x-photo-link>
                 @else
@@ -94,7 +94,7 @@
                         @foreach ($featuredPhotos as $photo)
                             <x-photo-link :photo="$photo" class="group relative block aspect-[4/3] overflow-hidden bg-black/[0.03]">
                                 @if ($photo->web_url)
-                                    <img src="{{ $photo->web_url }}" alt="{{ $photo->publicLabel() }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
+                                    <img src="{{ $photo->web_url }}" alt="{{ $photo->publicLabel() }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-105 photo-protected" draggable="false">
                                 @endif
                                 <span class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-sm font-medium text-white opacity-100 transition md:opacity-0 md:group-hover:opacity-100">
                                     {{ $photo->publicLabel() }}
@@ -157,7 +157,7 @@
                                         @foreach ($card['preview_photos'] as $preview)
                                             <x-photo-link :photo="$preview" class="block h-14 w-16 overflow-hidden rounded bg-black/10">
                                                 @if ($preview->thumbnail_url)
-                                                    <img src="{{ $preview->thumbnail_url }}" alt="{{ $preview->publicLabel() }}" class="h-full w-full object-cover">
+                                                    <img src="{{ $preview->thumbnail_url }}" alt="{{ $preview->publicLabel() }}" class="h-full w-full object-cover photo-protected" draggable="false">
                                                 @endif
                                             </x-photo-link>
                                         @endforeach

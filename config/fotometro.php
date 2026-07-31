@@ -38,7 +38,7 @@ return [
         'default_credit_line' => env('FOTOMETRO_PHOTO_CREDIT_LINE'),
         'default_usage_terms' => env('FOTOMETRO_PHOTO_USAGE_TERMS'),
         'watermark' => [
-            'enabled' => filter_var(env('FOTOMETRO_PHOTO_WATERMARK_ENABLED', false), FILTER_VALIDATE_BOOL),
+            'enabled' => filter_var(env('FOTOMETRO_PHOTO_WATERMARK_ENABLED', true), FILTER_VALIDATE_BOOL),
             'text' => env('FOTOMETRO_PHOTO_WATERMARK_TEXT'),
             'position' => env('FOTOMETRO_PHOTO_WATERMARK_POSITION', 'bottom-right'),
             'opacity' => (float) env('FOTOMETRO_PHOTO_WATERMARK_OPACITY', 0.45),

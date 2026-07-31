@@ -55,7 +55,7 @@
         @forelse ($photos as $photo)
             <x-photo-link :photo="$photo" wire:key="photo-{{ $photo->id }}" class="group overflow-hidden rounded-md bg-black/[0.03] ring-1 ring-black/10 transition hover:-translate-y-0.5 hover:shadow-md">
                 @if ($photo->thumbnail_url)
-                    <img src="{{ $photo->thumbnail_url }}" alt="{{ $photo->publicLabel() }}" class="aspect-[4/3] w-full object-cover transition group-hover:scale-105">
+                    <img src="{{ $photo->thumbnail_url }}" alt="{{ $photo->publicLabel() }}" class="aspect-[4/3] w-full object-cover transition group-hover:scale-105 photo-protected" draggable="false">
                 @else
                     <span class="grid aspect-[4/3] place-items-center bg-black/5 text-sm text-black/55">Aperçu indisponible</span>
                 @endif

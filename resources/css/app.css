@@ -1043,6 +1043,14 @@
         object-fit: contain;
     }
 
+    /* Casual deterrence to go with the .photo-protected contextmenu/dragstart
+       handlers in app.js — belt and braces, not a real barrier on its own. */
+    .photo-protected {
+        -webkit-user-drag: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+
     @media (min-width: 768px) {
         .lightbox-image {
             max-height: 90vh;
