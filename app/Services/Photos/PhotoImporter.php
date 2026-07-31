@@ -39,6 +39,7 @@ class PhotoImporter
             $photo = Photo::query()->create([
                 'station_id' => $attributes['station_id'],
                 'station_access_id' => $attributes['station_access_id'] ?? null,
+                'line_id' => $attributes['line_id'] ?? null,
                 'title' => $attributes['title'] ?? null,
                 'slug' => $this->uniqueSlug($attributes['title'] ?? pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)),
                 'description' => $attributes['description'] ?? null,

@@ -17,6 +17,11 @@
                 @endif
             </div>
             <div class="flex flex-wrap gap-2">
+                @if ($photo->is_published)
+                    <button form="unpublish-photo" class="flex items-center gap-2 rounded-md border border-black/10 px-3 py-2 font-semibold">Dépublier</button>
+                @else
+                    <button form="publish-photo" class="flex items-center gap-2 rounded-md bg-green-700 px-3 py-2 font-semibold text-white hover:bg-green-800">Publier</button>
+                @endif
                 <button form="process-photo" class="flex items-center gap-2 rounded-md border border-black/10 px-3 py-2 font-semibold"><x-icons.refresh class="h-4 w-4" /> Traiter</button>
                 @if ($photo->station->cover_photo_id === $photo->id)
                     <button form="unset-cover-photo" class="flex items-center gap-2 rounded-md border border-black/10 px-3 py-2 font-semibold"><x-icons.star class="h-4 w-4" /> Retirer la couverture</button>
@@ -64,18 +69,21 @@
                     />
                 </div>
 
-                <div class="space-y-4 rounded-lg border border-black/10 bg-black/[0.02] p-4">
+                <div class="space-y-4 rounded-lg border border-black/10 bg-black/[0.02] p-4" x-data="{ license: '{{ old('license', $photo->license->value) }}' }">
                     <h2 class="text-base font-semibold">Droits &amp; licence</h2>
                     <label class="block text-sm font-semibold">Titulaire <input name="copyright_holder" value="{{ old('copyright_holder', $photo->copyright_holder) }}" class="mt-1 w-full rounded-md border border-black/15 bg-white p-2"></label>
                     <label class="block text-sm font-semibold">Mention <input name="copyright_notice" value="{{ old('copyright_notice', $photo->copyright_notice) }}" class="mt-1 w-full rounded-md border border-black/15 bg-white p-2"></label>
-                    <label class="block text-sm font-semibold">Licence <select name="license" class="mt-1 w-full rounded-md border border-black/15 bg-white p-2">@foreach($licenses as $license)<option value="{{ $license->value }}" @selected(old('license', $photo->license->value) === $license->value)>{{ $license->label() }}</option>@endforeach</select></label>
-                </div>
-
-                <div class="space-y-2 rounded-lg border border-black/10 bg-black/[0.02] p-4">
-                    <h2 class="text-base font-semibold">Publication</h2>
-                    <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="is_featured" value="1" @checked(old('is_featured', $photo->is_featured))> Mise en avant</label>
-                    <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="publish_when_ready" value="1" @checked(old('publish_when_ready', $photo->publish_when_ready))> Publier automatiquement quand le traitement réussit</label>
-                    <label class="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" name="is_published" value="1" @checked(old('is_published', $photo->is_published))> Publiée</label>
+                    <label class="block text-sm font-semibold">Licence
+                        <select name="license" class="mt-1 w-full rounded-md border border-black/15 bg-white p-2" x-model="license">
+                            @foreach($licenses as $license)
+                                <option value="{{ $license->value }}" @selected(old('license', $photo->license->value) === $license->value)>{{ $license->label() }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <label class="block text-sm font-semibold" x-show="license === 'custom'" x-cloak>
+                        Conditions d’utilisation
+                        <textarea name="usage_terms" class="mt-1 w-full rounded-md border border-black/15 bg-white p-2" placeholder="Décrivez les conditions de cette licence personnalisée.">{{ old('usage_terms', $photo->usage_terms) }}</textarea>
+                    </label>
                 </div>
 
                 <button class="w-full rounded-md bg-black px-4 py-2 font-semibold text-white">Enregistrer</button>
@@ -84,6 +92,11 @@
     </div>
 
     <form id="process-photo" method="POST" action="{{ route('admin.photos.process', $photo) }}">@csrf</form>
+    @if ($photo->is_published)
+        <form id="unpublish-photo" method="POST" action="{{ route('admin.photos.unpublish', $photo) }}">@csrf</form>
+    @else
+        <form id="publish-photo" method="POST" action="{{ route('admin.photos.publish', $photo) }}">@csrf</form>
+    @endif
     @if ($photo->station->cover_photo_id === $photo->id)
         <form id="unset-cover-photo" method="POST" action="{{ route('admin.photos.unset-cover', $photo) }}">@csrf @method('DELETE')</form>
     @elseif ($photo->is_published && $photo->processing_status === \App\Enums\PhotoProcessingStatus::Ready)

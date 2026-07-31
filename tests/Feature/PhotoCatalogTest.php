@@ -20,6 +20,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class PhotoCatalogTest extends TestCase
@@ -357,9 +358,12 @@ class PhotoCatalogTest extends TestCase
             'published_at' => null,
         ]);
 
+        // publish() now processes on demand rather than requiring a manual
+        // step first — this factory photo has no real file behind it, so
+        // that on-demand processing genuinely fails rather than succeeding.
         $this->actingAs($user)
             ->post(route('admin.photos.publish', $pending))
-            ->assertSessionHas('status', 'Cette photo ne peut pas être publiée avant la fin du traitement.');
+            ->assertSessionHas('status', 'Le traitement de cette photo a échoué, elle ne peut pas être publiée.');
         $this->assertFalse($pending->fresh()->is_published);
 
         $this->actingAs($user)->post(route('admin.photos.publish', $ready))->assertSessionHas('status', 'Photo publiée.');
@@ -368,6 +372,150 @@ class PhotoCatalogTest extends TestCase
         $this->actingAs($user)->post(route('admin.photos.unpublish', $ready))->assertSessionHas('status', 'Photo dépubliée.');
         $this->assertFalse($ready->fresh()->is_published);
         $this->assertNull($ready->fresh()->published_at);
+    }
+
+    public function test_the_edit_form_cannot_publish_a_photo_directly(): void
+    {
+        // Publishing is only ever done through the dedicated Publier/Dépublier
+        // buttons (admin.photos.publish/.unpublish), which go through
+        // PhotoPublicationService — not through this metadata-only form.
+        // Ticking a raw is_published field here (if a client sent one) must
+        // be ignored rather than bypassing processing/moderation entirely.
+        $user = User::factory()->create();
+        $station = Station::factory()->create();
+        $photo = Photo::factory()->create([
+            'station_id' => $station->id,
+            'is_published' => false,
+            'processing_status' => PhotoProcessingStatus::Pending,
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('admin.photos.update', $photo), [
+                'station_id' => $station->id,
+                'copyright_holder' => $photo->copyright_holder,
+                'copyright_notice' => $photo->copyright_notice,
+                'license' => $photo->license->value,
+                'is_published' => '1',
+            ])
+            ->assertSessionHas('status', 'Photo mise à jour.');
+
+        $photo->refresh();
+        $this->assertFalse($photo->is_published);
+        $this->assertSame(PhotoProcessingStatus::Pending, $photo->processing_status);
+    }
+
+    public function test_editing_a_photo_preselects_its_own_line_not_the_stations_first_line(): void
+    {
+        // For an interchange station, the edit form used to always default
+        // to the station's first line by sort_order — regardless of which
+        // line the photo actually was imported/edited for — which looked
+        // like the photo had silently been moved to a different line.
+        $user = User::factory()->create();
+        $station = Station::factory()->create();
+        $lineA = Line::factory()->create(['sort_order' => 1]);
+        $lineB = Line::factory()->create(['sort_order' => 2]);
+        $station->lines()->attach([$lineA->id, $lineB->id]);
+
+        $photo = Photo::factory()->create(['station_id' => $station->id, 'line_id' => $lineB->id]);
+
+        $response = $this->actingAs($user)->get(route('admin.photos.show', $photo));
+
+        // Js::from() escapes the quotes as " to embed the JSON safely
+        // inside a single-quoted JSON.parse('...') call — that's the literal
+        // substring that ends up in the rendered HTML.
+        $needleB = chr(92).'u0022initialLineId'.chr(92).'u0022:'.$lineB->id;
+        $needleA = chr(92).'u0022initialLineId'.chr(92).'u0022:'.$lineA->id;
+
+        $response->assertOk();
+        $response->assertSee($needleB, false);
+        $response->assertDontSee($needleA, false);
+    }
+
+    public function test_updating_a_photo_stores_the_selected_line(): void
+    {
+        $user = User::factory()->create();
+        $station = Station::factory()->create();
+        $line = Line::factory()->create();
+        $station->lines()->attach($line->id);
+        $photo = Photo::factory()->create(['station_id' => $station->id, 'line_id' => null]);
+
+        $this->actingAs($user)->put(route('admin.photos.update', $photo), [
+            'station_id' => $station->id,
+            'line_id' => $line->id,
+            'copyright_holder' => $photo->copyright_holder,
+            'copyright_notice' => $photo->copyright_notice,
+            'license' => $photo->license->value,
+        ])->assertSessionHas('status', 'Photo mise à jour.');
+
+        $this->assertSame($line->id, $photo->fresh()->line_id);
+    }
+
+    public function test_station_gallery_can_be_filtered_by_line_at_an_interchange(): void
+    {
+        $station = Station::factory()->create();
+        $lineA = Line::factory()->create();
+        $lineB = Line::factory()->create();
+        $station->lines()->attach([$lineA->id, $lineB->id]);
+
+        $photoA = Photo::factory()->create([
+            'station_id' => $station->id,
+            'line_id' => $lineA->id,
+            'is_published' => true,
+            'processing_status' => PhotoProcessingStatus::Ready,
+        ]);
+        $photoB = Photo::factory()->create([
+            'station_id' => $station->id,
+            'line_id' => $lineB->id,
+            'is_published' => true,
+            'processing_status' => PhotoProcessingStatus::Ready,
+        ]);
+
+        Livewire::test(\App\Livewire\StationGallery::class, ['station' => $station])
+            ->assertViewHas('photos', fn ($photos) => $photos->total() === 2)
+            ->call('selectLine', $lineA->id)
+            ->assertViewHas('photos', fn ($photos) => $photos->total() === 1 && $photos->first()->id === $photoA->id);
+    }
+
+    public function test_station_gallery_hides_line_filter_for_single_line_stations(): void
+    {
+        $station = Station::factory()->create();
+        $line = Line::factory()->create();
+        $station->lines()->attach($line->id);
+        Photo::factory()->create(['station_id' => $station->id, 'is_published' => true, 'processing_status' => PhotoProcessingStatus::Ready]);
+
+        Livewire::test(\App\Livewire\StationGallery::class, ['station' => $station])
+            ->assertDontSee('Filtrer par ligne');
+    }
+
+    public function test_publishing_a_not_yet_processed_photo_processes_it_in_the_same_step(): void
+    {
+        if (! function_exists('imagecreatetruecolor')) {
+            $this->markTestSkipped('GD is not available.');
+        }
+
+        Storage::fake('local');
+        Storage::fake('public');
+        config(['fotometro.photos.process_synchronously' => false]);
+
+        $user = User::factory()->create();
+        $station = Station::factory()->create();
+        $photo = app(PhotoImporter::class)->import(
+            UploadedFile::fake()->image('photo.jpg', 1600, 1000),
+            ['station_id' => $station->id, 'license' => 'all_rights_reserved']
+        );
+
+        // process_synchronously is off, so this draft is still Pending —
+        // publishing it should process it on the spot rather than requiring
+        // a separate manual "Traiter" click first.
+        $this->assertSame(PhotoProcessingStatus::Pending, $photo->processing_status);
+
+        $this->actingAs($user)
+            ->post(route('admin.photos.publish', $photo))
+            ->assertSessionHas('status', 'Photo publiée.');
+
+        $photo->refresh();
+        $this->assertSame(PhotoProcessingStatus::Ready, $photo->processing_status);
+        $this->assertTrue($photo->is_published);
     }
 
     public function test_bulk_publish_and_manual_processing_limit(): void

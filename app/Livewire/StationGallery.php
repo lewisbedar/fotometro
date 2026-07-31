@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use App\Models\Line;
 use App\Models\Photo;
 use App\Models\PhotoCategory;
 use App\Models\Station;
@@ -27,6 +28,9 @@ class StationGallery extends Component
     #[Url(as: 'access', history: true)]
     public ?int $accessId = null;
 
+    #[Url(as: 'ligne', history: true)]
+    public ?int $lineId = null;
+
     public function mount(Station $station): void
     {
         $this->station = $station;
@@ -38,6 +42,11 @@ class StationGallery extends Component
     }
 
     public function updatedAccessId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedLineId(): void
     {
         $this->resetPage();
     }
@@ -54,6 +63,12 @@ class StationGallery extends Component
         $this->resetPage();
     }
 
+    public function selectLine(?int $lineId): void
+    {
+        $this->lineId = $lineId;
+        $this->resetPage();
+    }
+
     #[On('filterByAccess')]
     public function filterByAccess(int $accessId): void
     {
@@ -64,6 +79,7 @@ class StationGallery extends Component
     {
         $this->categorySlug = null;
         $this->accessId = null;
+        $this->lineId = null;
         $this->resetPage();
     }
 
@@ -91,9 +107,36 @@ class StationGallery extends Component
     }
 
     #[Computed]
+    public function selectedLine(): ?Line
+    {
+        if (! $this->lineId) {
+            return null;
+        }
+
+        return $this->station->lines->firstWhere('id', $this->lineId);
+    }
+
+    #[Computed]
     public function allPhotos(): Collection
     {
         return $this->basePhotosQuery()->get();
+    }
+
+    /**
+     * Only meaningful (and only shown by the view) for interchange stations —
+     * a single-line station has nothing to filter by.
+     */
+    #[Computed]
+    public function lineFilters(): Collection
+    {
+        if ($this->station->lines->count() < 2) {
+            return collect();
+        }
+
+        return $this->station->lines->map(fn (Line $line) => [
+            'line' => $line,
+            'count' => $this->allPhotos->where('line_id', $line->id)->count(),
+        ]);
     }
 
     #[Computed]
@@ -172,6 +215,10 @@ class StationGallery extends Component
 
         if ($access = $this->selectedAccess) {
             $query->where('station_access_id', $access->id);
+        }
+
+        if ($line = $this->selectedLine) {
+            $query->where('line_id', $line->id);
         }
 
         return view('livewire.station-gallery', [

@@ -70,6 +70,7 @@ class PhotoController extends Controller
             'photos' => ['required', 'array', 'size:'.count($request->file('files', []))],
             'photos.*.station_id' => ['required', 'exists:stations,id'],
             'photos.*.station_access_id' => ['nullable', 'exists:station_accesses,id'],
+            'photos.*.line_id' => ['nullable', 'exists:lines,id'],
             'photos.*.photo_category_ids' => ['nullable', 'array'],
             'photos.*.photo_category_ids.*' => ['integer', 'exists:photo_categories,id'],
             'photos.*.description' => ['nullable', 'string'],
@@ -117,7 +118,7 @@ class PhotoController extends Controller
 
         return view('admin.photos.show', [
             'photo' => $photo,
-            ...$this->formData($photo->station_id),
+            ...$this->formData($photo->station_id, $photo->line_id),
         ]);
     }
 
@@ -126,6 +127,7 @@ class PhotoController extends Controller
         $data = $request->validate([
             'station_id' => ['required', 'exists:stations,id'],
             'station_access_id' => ['nullable', 'exists:station_accesses,id'],
+            'line_id' => ['nullable', 'exists:lines,id'],
             'category_ids' => ['nullable', 'array'],
             'category_ids.*' => ['integer', 'exists:photo_categories,id'],
             'title' => ['nullable', 'string', 'max:255'],
@@ -136,22 +138,21 @@ class PhotoController extends Controller
             'credit_line' => ['nullable', 'string', 'max:255'],
             'license' => ['required', 'in:'.collect(PhotoLicense::cases())->pluck('value')->implode(',')],
             'usage_terms' => ['nullable', 'string'],
-            'is_featured' => ['nullable', 'boolean'],
-            'is_published' => ['nullable', 'boolean'],
-            'publish_when_ready' => ['nullable', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $importer->validateAccess((int) $data['station_id'], $data['station_access_id'] ?? null);
         $oldStation = $photo->station;
 
+        // Publishing state (is_published/publish_when_ready) is deliberately
+        // untouched here — it's only ever changed via the dedicated
+        // publish()/unpublish() actions, which also handle processing,
+        // moderation_status, and the submitter notification. This form is
+        // metadata only.
         $photo->update([
             ...collect($data)->except(['category_ids'])->all(),
             'station_access_id' => $data['station_access_id'] ?? null,
-            'is_featured' => $request->boolean('is_featured'),
-            'is_published' => $request->boolean('is_published'),
-            'publish_when_ready' => $request->boolean('publish_when_ready'),
-            'published_at' => $request->boolean('is_published') ? ($photo->published_at ?? now()) : null,
+            'line_id' => $data['line_id'] ?? null,
             'sort_order' => (int) ($data['sort_order'] ?? 0),
         ]);
 
@@ -188,7 +189,7 @@ class PhotoController extends Controller
     public function publish(Photo $photo, PhotoPublicationService $publication): RedirectResponse
     {
         if (! $publication->publish($photo)) {
-            return back()->with('status', 'Cette photo ne peut pas être publiée avant la fin du traitement.');
+            return back()->with('status', 'Le traitement de cette photo a échoué, elle ne peut pas être publiée.');
         }
 
         return back()->with('status', 'Photo publiée.');
@@ -264,11 +265,15 @@ class PhotoController extends Controller
         return back()->with('status', "{$done} photo(s) traitée(s), {$ignored} ignorée(s).");
     }
 
-    private function formData(?int $stationId = null): array
+    private function formData(?int $stationId = null, ?int $lineId = null): array
     {
-        $selectedLineId = null;
+        // Prefer the photo's own stored line (set explicitly when it was
+        // imported/edited) over guessing — for a multi-line station,
+        // defaulting to "the station's first line" doesn't mean anything
+        // and previously made the form silently show the wrong line.
+        $selectedLineId = $lineId;
 
-        if ($stationId) {
+        if (! $selectedLineId && $stationId) {
             $selectedLineId = Station::query()
                 ->whereKey($stationId)
                 ->with(['lines' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')])

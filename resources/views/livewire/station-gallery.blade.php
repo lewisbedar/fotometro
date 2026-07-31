@@ -4,10 +4,34 @@
             <h2 class="text-2xl font-semibold">Galerie</h2>
             <p class="mt-1 text-sm text-black/60">{{ $photos->total() }} photographie(s) dans cette sélection</p>
         </div>
-        @if ($this->selectedCategory || $this->selectedAccess)
+        @if ($this->selectedCategory || $this->selectedAccess || $this->selectedLine)
             <button type="button" wire:click="resetFilters" class="rounded-md border border-black/10 px-3 py-2 text-sm font-semibold hover:bg-black hover:text-white">Réinitialiser</button>
         @endif
     </div>
+
+    @if ($this->lineFilters->isNotEmpty())
+        <nav class="mt-5 flex flex-wrap gap-2 text-sm" aria-label="Filtrer par ligne">
+            <button
+                type="button"
+                wire:click="selectLine(null)"
+                @class(['rounded-full px-3 py-1 font-semibold ring-1 ring-black/10', 'bg-black text-white' => ! $this->selectedLine, 'bg-black/5' => $this->selectedLine])
+            >
+                Toutes les lignes
+            </button>
+            @foreach ($this->lineFilters as $item)
+                <button
+                    type="button"
+                    wire:click="selectLine({{ $item['line']->id }})"
+                    wire:key="line-{{ $item['line']->id }}"
+                    class="flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold ring-1 ring-black/10"
+                    @style(["opacity: 0.45" => $this->selectedLine && $this->selectedLine->id !== $item['line']->id])
+                >
+                    <span class="grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] font-bold" style="background: {{ $item['line']->color }}; color: {{ $item['line']->text_color }}">{{ $item['line']->code }}</span>
+                    ({{ $item['count'] }})
+                </button>
+            @endforeach
+        </nav>
+    @endif
 
     <nav class="mt-5 flex flex-wrap gap-2 text-sm" aria-label="Filtres de galerie">
         <button

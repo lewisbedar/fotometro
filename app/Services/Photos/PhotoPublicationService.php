@@ -15,10 +15,21 @@ class PhotoPublicationService
     public function __construct(
         private readonly StationCoverageUpdater $coverageUpdater,
         private readonly PhotoCacheInvalidator $cacheInvalidator,
+        private readonly PhotoProcessor $processor,
     ) {}
 
+    /**
+     * Publishing is the only step a moderator/admin should ever have to
+     * think about — processing (resize/thumbnails) is a technical
+     * prerequisite, not a separate decision, so it's run here on demand
+     * instead of requiring a manual "Traiter" click first.
+     */
     public function publish(Photo $photo): bool
     {
+        if ($photo->processing_status !== PhotoProcessingStatus::Ready) {
+            $photo = $this->processor->process($photo, true);
+        }
+
         if ($photo->processing_status !== PhotoProcessingStatus::Ready) {
             return false;
         }

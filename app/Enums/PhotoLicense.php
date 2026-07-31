@@ -13,11 +13,11 @@ enum PhotoLicense: string
     public function label(): string
     {
         return match ($this) {
-            self::AllRightsReserved => 'Tous droits reserves',
+            self::AllRightsReserved => 'Tous droits réservés',
             self::PersonalUseOnly => 'Usage personnel uniquement',
             self::CcBy => 'Creative Commons BY',
             self::CcByNc => 'Creative Commons BY-NC',
-            self::Custom => 'Licence personnalisee',
+            self::Custom => 'Licence personnalisée',
         };
     }
 

@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
 #[Fillable([
     'station_id',
     'station_access_id',
+    'line_id',
     'title',
     'slug',
     'description',
@@ -105,6 +106,11 @@ class Photo extends Model
     public function stationAccess(): BelongsTo
     {
         return $this->belongsTo(StationAccess::class);
+    }
+
+    public function line(): BelongsTo
+    {
+        return $this->belongsTo(Line::class);
     }
 
     public function categories(): BelongsToMany

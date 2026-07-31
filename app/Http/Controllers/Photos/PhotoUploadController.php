@@ -31,6 +31,7 @@ class PhotoUploadController extends Controller
             'file' => ['required', 'file'],
             'station_id' => ['required', 'exists:stations,id'],
             'station_access_id' => ['nullable', 'exists:station_accesses,id'],
+            'line_id' => ['nullable', 'exists:lines,id'],
             'photo_category_ids' => ['nullable', 'array'],
             'photo_category_ids.*' => ['integer', 'exists:photo_categories,id'],
             'description' => ['nullable', 'string', 'max:2000'],
@@ -41,6 +42,7 @@ class PhotoUploadController extends Controller
         $importer->import($data['file'], [
             'station_id' => $data['station_id'],
             'station_access_id' => $data['station_access_id'] ?? null,
+            'line_id' => $data['line_id'] ?? null,
             'photo_category_ids' => $data['photo_category_ids'] ?? [],
             'description' => $data['description'] ?? null,
             'copyright_holder' => $request->user()->name,

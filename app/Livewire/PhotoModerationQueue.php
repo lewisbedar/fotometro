@@ -175,7 +175,12 @@ class PhotoModerationQueue extends Component
             return;
         }
 
-        $publication->publish($photo);
+        if (! $publication->publish($photo)) {
+            $this->addError('publish', 'Le traitement de cette photo a échoué, elle n’a pas pu être publiée. Réessayez, ou consultez-la depuis Photos > '.$photo->id.' pour plus de détails.');
+
+            return;
+        }
+
         $this->loadNext();
     }
 
@@ -264,7 +269,12 @@ class PhotoModerationQueue extends Component
 
         // Editing and saving auto-approves — no separate approve click after
         // a manual correction (decided with the user up front).
-        $publication->publish($photo->fresh());
+        if (! $publication->publish($photo->fresh())) {
+            $this->addError('publish', 'Le traitement de cette photo a échoué, elle n’a pas pu être publiée. Réessayez, ou consultez-la depuis Photos > '.$photo->id.' pour plus de détails.');
+
+            return;
+        }
+
         $this->editing = false;
         $this->loadNext();
     }

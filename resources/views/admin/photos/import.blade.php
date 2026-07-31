@@ -135,6 +135,7 @@
 
                                     <input type="hidden" :name="`photos[${index}][station_id]`" :value="photo.stationId">
                                     <input type="hidden" :name="`photos[${index}][station_access_id]`" :value="photo.accessId">
+                                    <input type="hidden" :name="`photos[${index}][line_id]`" :value="photo.lineId">
                                 </div>
 
                                 <div class="grid gap-3 lg:grid-cols-[1fr_auto]">

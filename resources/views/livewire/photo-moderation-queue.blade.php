@@ -14,6 +14,8 @@
         <p class="text-sm text-black/60">{{ $this->pendingCount }} photo(s) en attente</p>
     </div>
 
+    @error('publish') <p class="rounded-md bg-red-50 p-3 text-sm text-red-800">{{ $message }}</p> @enderror
+
     @if (! $this->currentPhoto)
         <div class="flex flex-1 flex-col items-center justify-center rounded-lg bg-white text-center shadow-sm ring-1 ring-black/5">
             <p class="text-lg font-semibold">Aucune photo en attente</p>
