@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\PhotoLicense;
-use App\Enums\PhotoModerationStatus;
 use App\Enums\PhotoProcessingStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Line;
@@ -51,65 +50,6 @@ class PhotoController extends Controller
             'categories' => PhotoCategory::query()->where('is_active', true)->orderBy('name')->get(),
             'statuses' => PhotoProcessingStatus::cases(),
         ]);
-    }
-
-    public function create(): View
-    {
-        return view('admin.photos.import', $this->formData());
-    }
-
-    public function store(Request $request, PhotoImporter $importer): RedirectResponse
-    {
-        $data = $request->validate([
-            'credit_line' => ['nullable', 'string', 'max:255'],
-            'license' => ['required', 'in:'.collect(PhotoLicense::cases())->pluck('value')->implode(',')],
-            'usage_terms' => ['nullable', 'string'],
-            'publish_mode' => ['required', 'in:auto,draft'],
-            'files' => ['required', 'array', 'max:'.config('fotometro.photos.batch_limit', 20)],
-            'files.*' => ['required', 'file'],
-            'photos' => ['required', 'array', 'size:'.count($request->file('files', []))],
-            'photos.*.station_id' => ['required', 'exists:stations,id'],
-            'photos.*.station_access_id' => ['nullable', 'exists:station_accesses,id'],
-            'photos.*.line_id' => ['nullable', 'exists:lines,id'],
-            'photos.*.photo_category_ids' => ['nullable', 'array'],
-            'photos.*.photo_category_ids.*' => ['integer', 'exists:photo_categories,id'],
-            'photos.*.description' => ['nullable', 'string'],
-        ]);
-        $data['publish_when_ready'] = $data['publish_mode'] === 'auto';
-
-        // The titulaire is always the uploading admin, never a free-text field; the copyright
-        // notice is derived from the chosen license rather than typed manually (see PhotoLicense::copyrightNotice).
-        $holder = $request->user()->name;
-        $license = PhotoLicense::from($data['license']);
-        $shared = collect($data)->except(['files', 'photos'])->all();
-        $shared['copyright_holder'] = $holder;
-        $shared['copyright_notice'] = $license->copyrightNotice($holder);
-        $shared['user_id'] = $request->user()->id;
-        // The admin wizard is trusted content, unlike the public upload
-        // flow — it skips the moderation queue entirely.
-        $shared['moderation_status'] = PhotoModerationStatus::Approved;
-
-        $created = 0;
-        $rejected = 0;
-        $createdIds = [];
-
-        foreach ($request->file('files', []) as $index => $file) {
-            $perPhoto = $data['photos'][$index] ?? [];
-
-            try {
-                $photo = $importer->import($file, [...$shared, ...$perPhoto]);
-                $createdIds[] = $photo->id;
-                $created++;
-            } catch (\Throwable) {
-                $rejected++;
-            }
-        }
-
-        $auto = $data['publish_when_ready'] ? 'publication automatique activée' : 'conservées en brouillon';
-
-        return redirect()->route('admin.photos.index')
-            ->with('status', "{$created} photos importées, {$created} en cours de traitement, {$auto}. {$rejected} rejetée(s).")
-            ->with('imported_photo_ids', $createdIds);
     }
 
     public function show(Photo $photo): View

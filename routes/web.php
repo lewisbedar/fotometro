@@ -143,15 +143,18 @@ Route::middleware(['auth', 'approved', 'role:admin'])->group(function (): void {
     Route::resource('/admin/photo-categories', PhotoCategoryController::class)
         ->except(['show'])
         ->names('admin.photo-categories');
-    Route::get('/admin/photos/import', [PhotoController::class, 'create'])->name('admin.photos.import');
     Route::post('/admin/photos/bulk', [PhotoController::class, 'bulk'])->name('admin.photos.bulk');
     Route::post('/admin/photos/{photo}/process', [PhotoController::class, 'process'])->name('admin.photos.process');
     Route::post('/admin/photos/{photo}/publish', [PhotoController::class, 'publish'])->name('admin.photos.publish');
     Route::post('/admin/photos/{photo}/unpublish', [PhotoController::class, 'unpublish'])->name('admin.photos.unpublish');
     Route::post('/admin/photos/{photo}/set-cover', [PhotoController::class, 'setCover'])->name('admin.photos.set-cover');
     Route::delete('/admin/photos/{photo}/unset-cover', [PhotoController::class, 'unsetCover'])->name('admin.photos.unset-cover');
+    // Import lives at /televerser now (PhotoUploadController) for every
+    // role — admins/moderators get the batch wizard there instead of a
+    // separate /admin/photos/import page, so there's a single upload entry
+    // point in the product instead of two.
     Route::resource('/admin/photos', PhotoController::class)
-        ->except(['create', 'edit'])
+        ->except(['create', 'edit', 'store'])
         ->names('admin.photos');
 
     Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');

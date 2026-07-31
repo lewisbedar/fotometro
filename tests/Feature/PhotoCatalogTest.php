@@ -249,7 +249,7 @@ class PhotoCatalogTest extends TestCase
     {
         $this->get('/admin/photos')->assertRedirect('/login');
         $this->actingAs(User::factory()->create())
-            ->get(route('admin.photos.import'))
+            ->get(route('photos.upload.create'))
             ->assertOk()
             ->assertSee('Importer des photos');
     }
@@ -312,7 +312,7 @@ class PhotoCatalogTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)
-            ->get(route('admin.photos.import'))
+            ->get(route('photos.upload.create'))
             ->assertOk()
             ->assertSee('fotometroPhotoImportWizard', false)
             ->assertSee('Ligne '.$line->code, false)
@@ -545,7 +545,7 @@ class PhotoCatalogTest extends TestCase
         Storage::fake('public');
         $station = Station::factory()->create();
 
-        $this->actingAs(User::factory()->create())->post(route('admin.photos.store'), [
+        $this->actingAs(User::factory()->create())->post(route('photos.upload.store'), [
             'license' => 'all_rights_reserved',
             'publish_mode' => 'auto',
             'files' => [
@@ -571,7 +571,7 @@ class PhotoCatalogTest extends TestCase
         $stationB = Station::factory()->create(['name' => 'Nation']);
         $category = PhotoCategory::factory()->create();
 
-        $this->actingAs(User::factory()->create())->post(route('admin.photos.store'), [
+        $this->actingAs(User::factory()->create())->post(route('photos.upload.store'), [
             'license' => 'all_rights_reserved',
             'publish_mode' => 'draft',
             'files' => [
@@ -597,7 +597,7 @@ class PhotoCatalogTest extends TestCase
     {
         Storage::fake('local');
 
-        $this->actingAs(User::factory()->create())->post(route('admin.photos.store'), [
+        $this->actingAs(User::factory()->create())->post(route('photos.upload.store'), [
             'license' => 'all_rights_reserved',
             'publish_mode' => 'auto',
             'files' => [

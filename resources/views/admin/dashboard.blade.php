@@ -49,7 +49,7 @@
                 <div class="flex gap-2 text-sm">
                     <a class="rounded-md border border-black/10 px-3 py-2 font-semibold hover:bg-black hover:text-white" href="{{ route('admin.photo-categories.index') }}">Catégories</a>
                     <a class="rounded-md border border-black/10 px-3 py-2 font-semibold hover:bg-black hover:text-white" href="{{ route('admin.photos.index') }}">Photos</a>
-                    <a class="flex items-center gap-2 rounded-md bg-black px-3 py-2 font-semibold text-white" href="{{ route('admin.photos.import') }}"><x-icons.add class="h-4 w-4" /> Importer</a>
+                    <a class="flex items-center gap-2 rounded-md bg-black px-3 py-2 font-semibold text-white" href="{{ route('photos.upload.create') }}"><x-icons.add class="h-4 w-4" /> Importer</a>
                 </div>
             </div>
             <div class="mt-4 divide-y divide-black/10">

@@ -66,7 +66,7 @@
         <form
             x-show="step === 'review'"
             method="POST"
-            action="{{ route('admin.photos.store') }}"
+            action="{{ route('photos.upload.store') }}"
             enctype="multipart/form-data"
             class="space-y-5"
             x-on:submit="handleSubmit($event)"

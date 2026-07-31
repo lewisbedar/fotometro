@@ -48,17 +48,30 @@ class UserPhotoUploadAndModerationTest extends TestCase
         $this->assertFalse(Photo::query()->publiclyVisible()->whereKey($photo->id)->exists());
     }
 
-    public function test_admin_upload_bypasses_moderation_since_nobody_else_could_ever_approve_it(): void
+    public function test_moderator_gets_the_batch_wizard_and_its_own_upload_bypasses_moderation(): void
     {
         Storage::fake('local');
         Storage::fake('public');
 
-        $admin = User::factory()->create();
+        $moderator = User::factory()->moderator()->create();
         $station = Station::factory()->create();
 
-        $this->actingAs($admin)->post(route('photos.upload.store'), [
-            'file' => UploadedFile::fake()->image('ma-photo.jpg', 1200, 800),
-            'station_id' => $station->id,
+        // Same upload page as everyone else, but a moderator (not just a
+        // full admin) also gets the batch wizard instead of the simple form —
+        // scopeAwaitingModeration() excludes their own uploads from their own
+        // queue just like it would for an admin, so they'd otherwise be stuck.
+        $this->actingAs($moderator)
+            ->get(route('photos.upload.create'))
+            ->assertOk()
+            ->assertSee('Importer des photos');
+
+        // Unlike a full admin, a moderator can't view /admin/photos — the
+        // batch-store redirect must account for that.
+        $this->actingAs($moderator)->post(route('photos.upload.store'), [
+            'license' => 'all_rights_reserved',
+            'publish_mode' => 'auto',
+            'files' => [UploadedFile::fake()->image('ma-photo.jpg', 1200, 800)],
+            'photos' => [['station_id' => $station->id]],
         ])->assertRedirect(route('photos.upload.thanks'));
 
         $photo = Photo::query()->where('station_id', $station->id)->firstOrFail();
@@ -321,7 +334,7 @@ class UserPhotoUploadAndModerationTest extends TestCase
         $admin = User::factory()->create();
         $station = Station::factory()->create();
 
-        $this->actingAs($admin)->post(route('admin.photos.store'), [
+        $this->actingAs($admin)->post(route('photos.upload.store'), [
             'license' => 'all_rights_reserved',
             'publish_mode' => 'draft',
             'files' => [UploadedFile::fake()->image('admin.jpg', 800, 600)],
