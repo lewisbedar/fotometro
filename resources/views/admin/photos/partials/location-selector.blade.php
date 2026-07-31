@@ -2,6 +2,20 @@
     $initialLineId = old('line_id', $selectedLineId ?? null);
     $initialStationId = old('station_id', $photo->station_id ?? null);
     $initialAccessId = old('station_access_id', $photo->station_access_id ?? null);
+
+    // A photo with no line_id on a multi-line station is a deliberate
+    // "covers the whole station" choice (see the checkbox below), not an
+    // oversight — the edit form has to reflect that on load, otherwise
+    // just saving the form again (without touching anything) would silently
+    // reassign it to whichever line formData() guessed for the Station
+    // dropdown, undoing the photographer's original intent.
+    $hasOldLocationInput = old('line_id') !== null || old('station_id') !== null;
+    $initialCoversWholeStation = $hasOldLocationInput
+        ? old('line_id') === ''
+        : ($photo->exists
+            && $photo->line_id === null
+            && $photo->station
+            && $photo->station->lines->where('is_active', true)->count() > 1);
 @endphp
 
 <section
@@ -11,6 +25,7 @@
             'initialLineId' => $initialLineId,
             'initialStationId' => $initialStationId,
             'initialAccessId' => $initialAccessId,
+            'initialCoversWholeStation' => $initialCoversWholeStation,
             'lineStationsUrl' => route('admin.api.lines.stations', ['line' => '__LINE__']),
             'stationAccessesUrl' => route('admin.api.stations.accesses', ['station' => '__STATION__']),
             'mapConfig' => $mapConfig,

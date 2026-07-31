@@ -354,6 +354,47 @@ class PhotoCatalogTest extends TestCase
             ->assertSee((string) $access->id, false);
     }
 
+    public function test_admin_edit_page_preselects_covers_whole_station_for_a_null_line_multi_line_photo(): void
+    {
+        $line = Line::factory()->create(['code' => '1']);
+        $otherLine = Line::factory()->create(['code' => '13']);
+        $station = Station::factory()->create(['name' => 'Champs-Élysées - Clemenceau']);
+        $line->stations()->attach($station->id, ['position' => 1]);
+        $otherLine->stations()->attach($station->id, ['position' => 1]);
+
+        $wholeStationPhoto = Photo::factory()->create(['station_id' => $station->id, 'line_id' => null]);
+        $singleLinePhoto = Photo::factory()->create(['station_id' => $station->id, 'line_id' => $line->id]);
+
+        $user = User::factory()->create();
+
+        // A photo saved with no specific line on a multi-line station must
+        // show the "covers whole station" checkbox already checked —
+        // otherwise just re-saving the form (touching nothing) would
+        // silently assign it to whichever line the Station dropdown
+        // happens to default to (see location-selector.blade.php).
+        // Illuminate\Support\Js::from() renders as JSON.parse('...') with
+        // quotes escaped as " rather than literal " characters.
+        $escapedQuote = chr(92).'u0022';
+
+        $wholeStationContent = $this->actingAs($user)
+            ->get(route('admin.photos.show', $wholeStationPhoto))
+            ->assertOk()
+            ->getContent();
+        $this->assertStringContainsString(
+            $escapedQuote.'initialCoversWholeStation'.$escapedQuote.':true',
+            $wholeStationContent
+        );
+
+        $singleLineContent = $this->actingAs($user)
+            ->get(route('admin.photos.show', $singleLinePhoto))
+            ->assertOk()
+            ->getContent();
+        $this->assertStringContainsString(
+            $escapedQuote.'initialCoversWholeStation'.$escapedQuote.':false',
+            $singleLineContent
+        );
+    }
+
     public function test_edit_refuses_access_from_another_station(): void
     {
         $station = Station::factory()->create();

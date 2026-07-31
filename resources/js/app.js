@@ -2087,7 +2087,7 @@ window.fotometroPhotoForm = function fotometroPhotoForm(options) {
         mapConfig: buildAdminMapConfig(options.mapConfig || {}),
         lineStationsUrl: options.lineStationsUrl,
         stationAccessesUrl: options.stationAccessesUrl,
-        coversWholeStation: false,
+        coversWholeStation: Boolean(options.initialCoversWholeStation),
 
         async init() {
             if (this.lineId) {
