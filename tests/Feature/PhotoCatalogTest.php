@@ -126,6 +126,40 @@ class PhotoCatalogTest extends TestCase
         $this->assertFalse($this->cornerRegionDiffersFrom($cleanWebImage, $backgroundRgb), 'Expected no watermark when disabled.');
     }
 
+    public function test_watermark_with_accented_text_does_not_crash_processing(): void
+    {
+        if (! function_exists('imagecreatetruecolor')) {
+            $this->markTestSkipped('GD is not available.');
+        }
+
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $image = imagecreatetruecolor(1200, 800);
+        imagefill($image, 0, 0, imagecolorallocate($image, 40, 90, 180));
+        $path = tempnam(sys_get_temp_dir(), 'wm').'.jpg';
+        imagejpeg($image, $path, 95);
+        imagedestroy($image);
+
+        // GD's built-in bitmap font only understands single-byte encodings —
+        // this exercises the UTF-8 -> Latin-1 conversion in applyWatermark()
+        // rather than mangling or crashing on the accented "é".
+        config(['fotometro.photos.watermark.enabled' => true, 'fotometro.photos.watermark.text' => 'fotométro']);
+        $station = Station::factory()->create();
+        $photo = app(PhotoImporter::class)->import(
+            new UploadedFile($path, 'solid.jpg', 'image/jpeg', null, true),
+            ['station_id' => $station->id, 'license' => 'all_rights_reserved']
+        );
+        app(PhotoProcessor::class)->process($photo);
+        $photo->refresh();
+
+        $this->assertSame(PhotoProcessingStatus::Ready, $photo->processing_status);
+        $this->assertNull($photo->processing_error);
+
+        $webImage = imagecreatefromjpeg(Storage::disk('public')->path($photo->web_path));
+        $this->assertTrue($this->cornerRegionDiffersFrom($webImage, [40, 90, 180]));
+    }
+
     private function cornerRegionDiffersFrom(\GdImage $image, array $backgroundRgb): bool
     {
         $width = imagesx($image);

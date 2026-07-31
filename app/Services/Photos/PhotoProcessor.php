@@ -153,7 +153,9 @@ class PhotoProcessor
      * Uses GD's built-in bitmap font rather than a bundled .ttf: one less
      * asset to deploy/miss on a shared host, and legibility here only
      * matters enough to make the source identifiable, not to look polished.
-     * ASCII only — the built-in font mangles multi-byte UTF-8 (accents).
+     * The built-in font only understands single-byte encodings, not UTF-8,
+     * so the text is converted to Latin-1 first (covers French accents —
+     * scripts outside Latin-1 would need a bundled .ttf instead).
      */
     private function applyWatermark(\GdImage $image): void
     {
@@ -164,6 +166,7 @@ class PhotoProcessor
         $width = imagesx($image);
         $height = imagesy($image);
         $text = config('fotometro.photos.watermark.text') ?: (parse_url(config('app.url', ''), PHP_URL_HOST) ?: 'fotometro');
+        $text = $this->toLatin1ForBuiltInFont($text);
         $opacity = max(0.0, min(1.0, (float) config('fotometro.photos.watermark.opacity', 0.45)));
 
         $font = 5;
@@ -202,6 +205,13 @@ class PhotoProcessor
         imagecopy($image, $overlay, $destX, $destY, 0, 0, $scaledWidth, $scaledHeight);
         imagealphablending($image, false);
         imagedestroy($overlay);
+    }
+
+    private function toLatin1ForBuiltInFont(string $text): string
+    {
+        $converted = @iconv('UTF-8', 'ISO-8859-1//TRANSLIT//IGNORE', $text);
+
+        return $converted !== false ? $converted : $text;
     }
 
     private function saveImage(\GdImage $image, string $path, string $mime, int $quality): void
