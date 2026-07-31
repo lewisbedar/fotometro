@@ -2397,6 +2397,7 @@ window.fotometroPhotoImportWizard = function fotometroPhotoImportWizard(options)
                 loadingStations: false,
                 loadingAccesses: false,
                 categoryIds: [],
+                title: '',
                 description: '',
                 detectionStatus: 'Détection de la station en cours...',
                 coversWholeStation: false,

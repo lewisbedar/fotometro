@@ -467,6 +467,22 @@ class PhotoCatalogTest extends TestCase
             ->assertSee((string) $access->id, false);
     }
 
+    public function test_admin_edit_page_title_does_not_double_escape_accents_and_apostrophes(): void
+    {
+        $photo = Photo::factory()->create(['title' => "L'entrée côté gauche"]);
+
+        // <x-layouts.app title="{{ ... }}"> (no leading colon) pre-escapes the
+        // string before it ever reaches the component's own {{ $title }} —
+        // the second pass then re-escapes the entities themselves, so a
+        // browser tab literally shows "L&#039;entrée" as text instead of an
+        // apostrophe. :title="..." passes the raw string, escaped once.
+        $this->actingAs(User::factory()->create())
+            ->get(route('admin.photos.show', $photo))
+            ->assertOk()
+            ->assertSee('<title>L&#039;entrée côté gauche - fotométro</title>', false)
+            ->assertDontSee('&amp;#039;', false);
+    }
+
     public function test_admin_edit_page_preselects_covers_whole_station_for_a_null_line_multi_line_photo(): void
     {
         $line = Line::factory()->create(['code' => '1']);
@@ -758,7 +774,7 @@ class PhotoCatalogTest extends TestCase
                 UploadedFile::fake()->image('two.jpg', 800, 600),
             ],
             'photos' => [
-                ['station_id' => $stationA->id, 'photo_category_ids' => [$category->id], 'description' => 'Quai ligne 1'],
+                ['station_id' => $stationA->id, 'photo_category_ids' => [$category->id], 'title' => "L'entrée", 'description' => 'Quai ligne 1'],
                 ['station_id' => $stationB->id, 'description' => 'Entrée principale'],
             ],
         ])->assertRedirect(route('admin.photos.index'));
@@ -766,7 +782,7 @@ class PhotoCatalogTest extends TestCase
         $photoA = Photo::query()->where('station_id', $stationA->id)->firstOrFail();
         $photoB = Photo::query()->where('station_id', $stationB->id)->firstOrFail();
 
-        $this->assertDatabaseHas('photos', ['station_id' => $stationA->id, 'description' => 'Quai ligne 1']);
+        $this->assertDatabaseHas('photos', ['station_id' => $stationA->id, 'title' => "L'entrée", 'description' => 'Quai ligne 1']);
         $this->assertTrue($photoA->categories->pluck('id')->contains($category->id));
         $this->assertDatabaseHas('photos', ['station_id' => $stationB->id, 'description' => 'Entrée principale']);
         $this->assertTrue($photoB->categories->isEmpty());

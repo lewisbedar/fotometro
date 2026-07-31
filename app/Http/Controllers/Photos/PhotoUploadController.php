@@ -51,6 +51,7 @@ class PhotoUploadController extends Controller
             'line_id' => ['nullable', 'exists:lines,id'],
             'photo_category_ids' => ['nullable', 'array'],
             'photo_category_ids.*' => ['integer', 'exists:photo_categories,id'],
+            'title' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -61,6 +62,7 @@ class PhotoUploadController extends Controller
             'station_access_id' => $data['station_access_id'] ?? null,
             'line_id' => $data['line_id'] ?? null,
             'photo_category_ids' => $data['photo_category_ids'] ?? [],
+            'title' => $data['title'] ?? null,
             'description' => $data['description'] ?? null,
             'copyright_holder' => $request->user()->name,
             'publish_when_ready' => false,
@@ -86,6 +88,7 @@ class PhotoUploadController extends Controller
             'photos.*.line_id' => ['nullable', 'exists:lines,id'],
             'photos.*.photo_category_ids' => ['nullable', 'array'],
             'photos.*.photo_category_ids.*' => ['integer', 'exists:photo_categories,id'],
+            'photos.*.title' => ['nullable', 'string', 'max:255'],
             'photos.*.description' => ['nullable', 'string'],
         ]);
         $data['publish_when_ready'] = $data['publish_mode'] === 'auto';

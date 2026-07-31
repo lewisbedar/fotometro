@@ -184,6 +184,11 @@
                                     </template>
                                 </div>
 
+                                <label class="block text-sm font-semibold">Titre <span class="font-normal text-black/50">(optionnel)</span>
+                                    <input class="mt-1 w-full rounded-md border border-black/15 p-2" x-model="photo.title">
+                                    <input type="hidden" :name="`photos[${index}][title]`" :value="photo.title">
+                                </label>
+
                                 <div class="grid gap-3 lg:grid-cols-[1fr_auto]">
                                     <label class="block text-sm font-semibold">Description
                                         <input class="mt-1 w-full rounded-md border border-black/15 p-2" x-model="photo.description">

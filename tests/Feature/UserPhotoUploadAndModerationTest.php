@@ -35,6 +35,7 @@ class UserPhotoUploadAndModerationTest extends TestCase
         $this->actingAs($user)->post(route('photos.upload.store'), [
             'file' => UploadedFile::fake()->image('ma-photo.jpg', 1200, 800),
             'station_id' => $station->id,
+            'title' => "L'entrée côté quai",
             'description' => 'Une belle photo',
         ])->assertRedirect(route('photos.upload.thanks'));
 
@@ -44,6 +45,7 @@ class UserPhotoUploadAndModerationTest extends TestCase
         $this->assertFalse($photo->is_published);
         $this->assertSame($user->id, $photo->user_id);
         $this->assertSame($user->name, $photo->copyright_holder);
+        $this->assertSame("L'entrée côté quai", $photo->title);
 
         $this->assertFalse(Photo::query()->publiclyVisible()->whereKey($photo->id)->exists());
     }
