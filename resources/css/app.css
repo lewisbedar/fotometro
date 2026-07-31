@@ -169,11 +169,13 @@
 
     .map-search-block {
         position: relative;
+        z-index: 20;
         padding: 0 1rem;
     }
 
     .map-search-results {
         position: absolute;
+        z-index: 10;
         top: calc(100% + 0.5rem);
         left: 0;
         right: 0;
@@ -860,17 +862,17 @@
 
     @media (max-width: 767px) {
         .fullscreen-map-topbar {
-            grid-template-columns: auto minmax(0, 1fr) auto;
+            grid-template-columns: auto 1fr;
+            grid-template-areas:
+                "logo search"
+                "actions actions";
             gap: 0.5rem;
             left: 0.75rem;
             right: 0.75rem;
         }
 
-        .map-search-block {
-            min-width: 0;
-        }
-
         .map-logo-block {
+            grid-area: logo;
             min-height: 3rem;
             padding: 0.4rem;
         }
@@ -880,20 +882,14 @@
         }
 
         .map-search-block {
+            grid-area: search;
+            min-width: 0;
             padding-inline: 0.75rem;
         }
 
         .map-top-actions {
+            grid-area: actions;
             gap: 0.4rem;
-        }
-
-        .map-action-button {
-            min-width: 2.75rem;
-            padding-inline: 0.75rem;
-        }
-
-        .map-action-button span:last-child {
-            display: none;
         }
 
         .map-progress-panel {

@@ -1,4 +1,4 @@
-<x-layouts.app title="Modifier {{ $editUser->name }} - fotométro" :full-width="false">
+<x-layouts.app title="Modifier {{ $editUser->name }} - fotométro" :full-width="true">
     <form method="POST" action="{{ route('admin.users.update', $editUser) }}" class="mx-auto max-w-2xl space-y-5 rounded-lg bg-white p-6 shadow-sm ring-1 ring-black/5">
         @csrf
         @method('PATCH')

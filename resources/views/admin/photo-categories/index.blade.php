@@ -1,4 +1,4 @@
-<x-layouts.app title="Catégories photo - fotométro" :full-width="false">
+<x-layouts.app title="Catégories photo - fotométro" :full-width="true">
     <div class="space-y-6">
         <div class="flex items-center justify-between gap-4">
             <div>

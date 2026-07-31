@@ -51,7 +51,7 @@
             x-on:click="openAbout()"
             x-bind:aria-expanded="isAboutOpen.toString()"
             aria-controls="map-about-title"
-            x-show="! isSmallScreen || (! isFiltersOpen && ! isLinesOpen && ! selectedStation && ! selectedLine)"
+            x-show="! isFiltersOpen && ! isLinesOpen && ! selectedStation && ! selectedLine"
         >
             À propos
         </button>

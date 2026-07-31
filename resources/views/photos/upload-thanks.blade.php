@@ -1,4 +1,4 @@
-<x-layouts.app title="Merci - fotométro" :full-width="false">
+<x-layouts.app title="Merci - fotométro" :full-width="true">
     <div class="mx-auto max-w-md rounded-lg bg-white p-6 shadow-sm ring-1 ring-black/5">
         <h1 class="text-2xl font-semibold">Merci !</h1>
         <p class="mt-3 text-black/70">

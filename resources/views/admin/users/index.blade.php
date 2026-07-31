@@ -1,4 +1,4 @@
-<x-layouts.app title="Comptes utilisateurs - fotométro" :full-width="false">
+<x-layouts.app title="Comptes utilisateurs - fotométro" :full-width="true">
     <div class="space-y-6">
         <div>
             <p class="text-sm font-semibold uppercase tracking-[0.16em] text-black/55">Administration</p>

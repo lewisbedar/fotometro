@@ -1,4 +1,4 @@
-<aside class="map-progress-panel map-glass" :class="{ 'is-collapsed': progressCollapsed }" aria-labelledby="global-progress-title">
+<aside class="map-progress-panel map-glass hidden md:block" :class="{ 'is-collapsed': progressCollapsed }" aria-labelledby="global-progress-title">
     <button
         type="button"
         class="flex w-full items-center gap-2 text-left"
