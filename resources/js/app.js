@@ -2555,21 +2555,32 @@ window.fotometroPhotoImportWizard = function fotometroPhotoImportWizard(options)
             }
         },
 
-        duplicateLocation(sourceIndex) {
+        async duplicateLocation(sourceIndex) {
             const source = this.photos[sourceIndex];
 
-            this.photos.forEach((photo, index) => {
+            for (const [index, photo] of this.photos.entries()) {
                 if (index === sourceIndex) {
-                    return;
+                    continue;
                 }
 
                 photo.lineId = source.lineId;
-                photo.stationId = source.stationId;
-                photo.accessId = source.accessId;
                 photo.stations = source.stations;
                 photo.accesses = source.accesses;
                 photo.coversWholeStation = source.coversWholeStation;
-            });
+
+                // The station/access <select>s render their <option>s from
+                // `stations`/`accesses` via x-for; x-model only re-applies the
+                // DOM value when stationId/accessId themselves change, not
+                // when the options list they depend on is replaced wholesale
+                // right above. Without this, the copied station/access shows
+                // blank in the <select> even though the data is correct —
+                // same race as loadStationsFor()/loadAccessesFor() above.
+                photo.stationId = '';
+                photo.accessId = '';
+                await this.$nextTick();
+                photo.stationId = source.stationId;
+                photo.accessId = source.accessId;
+            }
         },
 
         duplicateField(sourceIndex, field) {
