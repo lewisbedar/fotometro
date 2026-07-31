@@ -33,7 +33,7 @@ class AccessImporter
                 'number' => $this->value($record, ['number', 'access_number', 'accshortname']),
                 'latitude' => $this->latitude($record),
                 'longitude' => $this->longitude($record),
-                'access_type' => $this->value($record, ['access_type', 'type']),
+                'access_type' => $this->accessKind($record),
                 'street' => $this->value($record, ['street', 'rue', 'adresse']),
                 'description' => $this->value($record, ['description', 'accdescription']),
                 'wheelchair_accessible' => $this->wheelchair($this->value($record, ['wheelchair_accessible', 'wheelchair', 'accessible_upr'])),
@@ -112,6 +112,29 @@ class AccessImporter
         }
 
         return $this->boolValue($value);
+    }
+
+    /**
+     * IDFM doesn't expose a single "type" field for accesses — entrance/exit
+     * is carried by two independent booleans (accisentry/accisexit), which
+     * can both be true (bidirectional access). Falls back to a literal
+     * access_type/type field for other, non-IDFM sources.
+     */
+    private function accessKind(array $record): ?string
+    {
+        $isEntry = $this->value($record, ['is_entry', 'accisentry']);
+        $isExit = $this->value($record, ['is_exit', 'accisexit']);
+
+        if ($isEntry === null && $isExit === null) {
+            return $this->value($record, ['access_type', 'type']);
+        }
+
+        return match (true) {
+            $this->boolValue($isEntry) && $this->boolValue($isExit) => 'Entrée et sortie',
+            $this->boolValue($isEntry) => 'Entrée',
+            $this->boolValue($isExit) => 'Sortie',
+            default => null,
+        };
     }
 
     private function latitude(array $record): ?float

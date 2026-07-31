@@ -13,6 +13,14 @@ fotometro peut importer le reseau metro depuis des jeux de donnees publics d'Ile
 
 Les URLs configurables peuvent pointer vers l'API publique IDFM, un fichier local `file://...` ou un fichier de stockage `storage://...` pour les tests et imports controles.
 
+Par defaut (`config/fotometro.php`), lines/arrets-lignes/stop-areas/stop-relations/traces/accesses/access-relations pointent vers l'instantane commite dans `resources/idfm-data/*.csv` plutot que vers l'API live: ce reseau evolue peu d'un jour a l'autre, et une base deja disponible dans le depot evite toute dependance reseau vers IDFM au moment de l'import, y compris en production. Pour rafraichir cet instantane depuis les donnees live IDFM:
+
+```bash
+php artisan fotometro:vendor-idfm-data
+```
+
+Puis verifier le diff et committer `resources/idfm-data/`. Le GTFS reste a part: l'archive fait 100+ Mo (au-dessus de la limite de 100 Mo par fichier de GitHub), il est donc toujours telecharge en direct depuis IDFM au moment de l'import `--only=gtfs`.
+
 Pour `arrets-lignes`, fotometro transforme automatiquement l'URL `/records` configuree en export complet:
 
 ```text
@@ -23,12 +31,14 @@ Le CSV a ete retenu pour lire le fichier progressivement depuis `storage/app/idf
 
 ## Configuration
 
+Ces variables n'ont pas besoin d'etre definies: sans elles, l'import lit l'instantane commite dans `resources/idfm-data/`. Ne les renseigner que pour pointer explicitement vers l'API live IDFM (ou un autre fichier) a la place du defaut:
+
 ```dotenv
 FOTOMETRO_IDFM_ARRETS_LIGNES_URL=https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/arrets-lignes/records?limit=100
 FOTOMETRO_IDFM_LINES_URL=https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/referentiel-des-lignes/records?limit=100
 FOTOMETRO_IDFM_TRACES_URL=https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/traces-des-lignes-de-transport-en-commun-idfm/records?limit=100
-FOTOMETRO_IDFM_ACCESSES_URL=
-FOTOMETRO_IDFM_ACCESS_RELATIONS_URL=
+FOTOMETRO_IDFM_ACCESSES_URL=https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/acces/exports/csv?limit=-1
+FOTOMETRO_IDFM_ACCESS_RELATIONS_URL=https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/relations-acces/exports/csv?limit=-1
 FOTOMETRO_IDFM_TIMEOUT=30
 FOTOMETRO_IDFM_TEMP_DIR=storage/app/idfm
 FOTOMETRO_IDFM_IMPORT_ACCESSES=true
@@ -102,7 +112,7 @@ L'import peut etre lance manuellement en SSH ou par tache cron ponctuelle:
 /usr/local/bin/php /home/USER/fotometro/artisan fotometro:import-network --dry-run
 ```
 
-Commencer par `--dry-run`, verifier le rapport, puis lancer l'import reel. Aucun Redis, Docker, supervisor ou processus resident n'est requis.
+Commencer par `--dry-run`, verifier le rapport, puis lancer l'import reel. Aucun Redis, Docker, supervisor ou processus resident n'est requis. L'import lit l'instantane commite avec le code (`resources/idfm-data/`): aucun acces reseau vers IDFM n'est necessaire pour `lines`, `stations` ou `accesses`, seul `--only=gtfs` telecharge encore l'archive GTFS en direct.
 # Ordre GTFS
 
 L'ordre des stations est reconstruit avec le GTFS officiel IDFM `offre-horaires-tc-gtfs-idfm`. La configuration par defaut lit la metadonnee OpenData, recupere l'URL du fichier `IDFM-gtfs.zip`, puis traite localement `routes.txt`, `trips.txt`, `stop_times.txt` et `stops.txt`.

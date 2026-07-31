@@ -17,10 +17,16 @@ class PublicLineController extends Controller
             ->whereIn('coverage_status', [CoverageStatus::Documented, CoverageStatus::Complete])
             ->count();
 
+        $directions = $line->stations
+            ->filter(fn ($station) => (bool) $station->pivot->is_terminus)
+            ->pluck('name')
+            ->values();
+
         return view('lines.show', [
             'line' => $line,
             'stationCount' => $stationCount,
             'documentedCount' => $documentedCount,
+            'directions' => $directions,
             'coveragePercentage' => $stationCount === 0 ? 0 : (int) round(($documentedCount / $stationCount) * 100),
             'mapConfig' => config('fotometro.map'),
             'lineStationCoordinates' => $line->stations

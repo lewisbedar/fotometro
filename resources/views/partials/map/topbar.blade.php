@@ -1,6 +1,6 @@
 <header class="fullscreen-map-topbar" aria-label="Navigation cartographique">
     <button type="button" class="map-glass map-logo-block" x-on:click="resetExplorer()" aria-label="Réinitialiser la carte">
-        <x-fotometro-logo :href="null" />
+        <x-fotometro-logo :href="false" />
     </button>
 
     <div class="map-glass map-search-block">
@@ -114,7 +114,7 @@
             </div>
         @else
             <a href="{{ route('login') }}" class="map-glass map-action-button">
-                <x-icons.admin class="h-4 w-4" />
+                <x-icons.login class="h-4 w-4" />
                 <span>Connexion</span>
             </a>
         @endauth

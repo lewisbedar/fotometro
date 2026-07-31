@@ -5,8 +5,6 @@
     :full-width="true"
 >
     <article class="space-y-8" x-data="fotometroLightbox()" x-on:click="handleClick($event)">
-        <a href="{{ route('home') }}" class="block text-right text-sm font-medium text-black/65 hover:text-black hover:underline">Retour à la carte</a>
-
         <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
                 <p class="text-sm font-semibold uppercase tracking-[0.16em] text-black/55">Station</p>
@@ -49,9 +47,9 @@
                         )
                     </span>
                 @endunless
-                <details class="relative">
-                    <summary class="cursor-pointer list-none rounded-md border border-black/10 px-2 py-1 text-xs font-semibold text-black/60 hover:bg-black hover:text-white">Détail</summary>
-                    <div class="absolute right-0 z-10 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-3 rounded-lg bg-white p-4 shadow-lg ring-1 ring-black/10">
+                <div class="relative" x-data="{ open: false }" x-on:mouseenter="open = true" x-on:mouseleave="open = false">
+                    <button type="button" class="rounded-md border border-black/10 px-2 py-1 text-xs font-semibold text-black/60 hover:bg-black hover:text-white">Détail</button>
+                    <div x-show="open" x-cloak x-transition class="absolute right-0 z-10 mt-2 w-80 max-w-[calc(100vw-2rem)] space-y-3 rounded-lg bg-white p-4 shadow-lg ring-1 ring-black/10">
                         @foreach ($coverageSummary['category_breakdown'] as $axis)
                             <div>
                                 <div class="flex justify-between gap-4 text-xs">
@@ -75,7 +73,7 @@
                             @endif
                         </div>
                     </div>
-                </details>
+                </div>
             </div>
         </header>
 
@@ -145,8 +143,8 @@
                                         @endif
                                         {{ $card['label'] }}
                                     </span>
-                                    @if ($card['access']->access_type || $card['access']->street)
-                                        <span class="mt-1 block text-sm opacity-70">{{ collect([$card['access']->access_type, $card['access']->street])->filter()->implode(' - ') }}</span>
+                                    @if ($card['access']->street)
+                                        <span class="mt-1 block text-sm opacity-70">{{ $card['access']->street }}</span>
                                     @endif
                                     @if ($card['access']->description)
                                         <span class="mt-1 block text-sm opacity-70">{{ $card['access']->description }}</span>

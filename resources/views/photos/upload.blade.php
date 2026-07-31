@@ -1,4 +1,4 @@
-<x-layouts.app title="Ajouter une photo - fotométro">
+<x-layouts.app title="Ajouter une photo - fotométro" :full-width="false">
     <div class="mx-auto max-w-2xl space-y-6">
         <div>
             <p class="text-sm font-semibold uppercase tracking-[0.16em] text-black/55">Contribuer</p>

@@ -1,4 +1,4 @@
-<x-layouts.app title="Motif de refus - fotométro">
+<x-layouts.app title="Motif de refus - fotométro" :full-width="false">
     <form method="POST" action="{{ $reason->exists ? route('admin.photo-rejection-reasons.update', $reason) : route('admin.photo-rejection-reasons.store') }}" class="mx-auto max-w-2xl space-y-5 rounded-lg bg-white p-6 shadow-sm ring-1 ring-black/5">
         @csrf
         @if ($reason->exists) @method('PUT') @endif

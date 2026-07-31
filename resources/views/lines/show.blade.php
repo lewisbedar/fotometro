@@ -4,14 +4,18 @@
     :canonical="route('lines.show', $line)"
 >
     <article class="space-y-8">
-        <a href="{{ route('home') }}" class="text-sm font-medium text-black/65 hover:text-black hover:underline">Retour a la carte</a>
-
-        <header class="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-start">
+        <header class="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start">
             <div>
                 <p class="text-sm font-semibold uppercase tracking-[0.16em] text-black/55">Ligne</p>
                 <div class="mt-3 flex items-center gap-4">
                     <span class="grid h-16 min-w-16 place-items-center rounded-full px-2 text-xl font-bold" style="background: {{ $line->color }}; color: {{ $line->text_color }}">{{ $line->code }}</span>
-                    <h1 class="text-4xl font-semibold">{{ $line->name }}</h1>
+                    <h1 class="text-xl font-semibold sm:text-2xl">
+                        @if ($directions->isNotEmpty())
+                            <span class="sr-only">Ligne {{ $line->code }} — </span>{{ $directions->join(' ↔ ') }}
+                        @else
+                            Ligne {{ $line->code }}
+                        @endif
+                    </h1>
                 </div>
             </div>
 
@@ -24,7 +28,7 @@
             </div>
         </header>
 
-        <section class="grid gap-6 lg:grid-cols-[1fr_380px]">
+        <section class="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start">
             <div class="rounded-lg bg-white p-6 shadow-sm ring-1 ring-black/5">
                 <h2 class="text-xl font-semibold">Stations</h2>
                 <ol class="mt-5 space-y-3">

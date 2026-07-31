@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
+use App\Services\Photos\AuthShowcasePhoto;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,9 +13,9 @@ use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
-    public function create(): View
+    public function create(AuthShowcasePhoto $showcasePhoto): View
     {
-        return view('auth.login');
+        return view('auth.login', ['showcasePhoto' => $showcasePhoto->random()]);
     }
 
     public function store(Request $request): RedirectResponse

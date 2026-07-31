@@ -58,6 +58,8 @@ La sélection d'une ligne filtre les stations visibles, met en évidence le trac
 
 La recherche appelle `/api/map/search`, filtre les noms de stations côté PHP avec normalisation ASCII et casse-insensibilité, puis permet la sélection au clavier avec les flèches et Entrée.
 
+Ce même endpoint alimente aussi une seconde barre de recherche, indépendante de la carte : un champ dans l'en-tête du layout standard (`resources/views/partials/site-search.blade.php`, composant Alpine `fotometroSiteSearch` dans `resources/js/app.js`), visible sur toutes les pages qui ne sont pas l'explorateur plein écran (fiches station/ligne/photo, profils, admin...). Contrairement à la recherche de la carte (qui filtre côté client un jeu de données déjà chargé), cette barre effectue un vrai appel réseau à chaque frappe (debounce 300 ms), puisque ces pages ne chargent pas l'intégralité du dataset carte. Chaque résultat station affiche une vignette (`cover_photo_url`, si la station a une photo de couverture) et mène directement à la galerie de la station — sans passer par la carte. Les résultats de lignes ne sont volontairement pas affichés dans cette barre (moins pertinent qu'une recherche de station pour cet usage).
+
 ## Cache
 
 `/api/map` utilise `Cache::remember` avec une durée courte configurable. Le cache fonctionne avec `file`, `database` ou `array` et ne dépend pas de Redis.

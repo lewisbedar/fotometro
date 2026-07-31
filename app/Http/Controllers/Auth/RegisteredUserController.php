@@ -7,9 +7,11 @@ use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\NewRegistrationPendingNotification;
+use App\Services\Photos\AuthShowcasePhoto;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -17,13 +19,23 @@ use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
 {
-    public function create(): View
+    public function create(AuthShowcasePhoto $showcasePhoto): View
     {
-        return view('auth.register');
+        return view('auth.register', ['showcasePhoto' => $showcasePhoto->random()]);
     }
 
     public function store(Request $request): RedirectResponse
     {
+        // Honeypot: the "website" field is hidden from real visitors via CSS, so
+        // only a bot that blindly fills every input ever populates it. Pretend
+        // success — same redirect as a real registration, no account created, no
+        // validation error — so the bot has no signal it was caught.
+        if ($request->filled('website')) {
+            Log::info('Registration honeypot triggered', ['ip' => $request->ip()]);
+
+            return redirect()->route('register.pending');
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],

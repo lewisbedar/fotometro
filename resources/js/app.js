@@ -2771,6 +2771,92 @@ window.fotometroCategoryDragSort = function fotometroCategoryDragSort(endpoint) 
     };
 };
 
+window.fotometroSiteSearch = function fotometroSiteSearch(dataset) {
+    return {
+        endpoint: dataset.searchEndpoint,
+        query: '',
+        stations: [],
+        loading: false,
+        error: null,
+        open: false,
+        timer: null,
+        requestSequence: 0,
+        controller: null,
+
+        queueSearch() {
+            clearTimeout(this.timer);
+            const query = this.query.trim();
+
+            if (query.length < 2) {
+                this.controller?.abort();
+                this.requestSequence++;
+                this.stations = [];
+                this.loading = false;
+                this.error = null;
+                return;
+            }
+
+            this.open = true;
+            this.loading = true;
+            this.error = null;
+            const requestId = ++this.requestSequence;
+
+            this.timer = setTimeout(() => {
+                this.performSearch(query, requestId);
+            }, 300);
+        },
+
+        async performSearch(query, requestId) {
+            this.controller?.abort();
+            this.controller = new AbortController();
+
+            try {
+                const response = await fetch(`${this.endpoint}?q=${encodeURIComponent(query)}`, {
+                    headers: { Accept: 'application/json' },
+                    signal: this.controller.signal,
+                });
+
+                if (requestId !== this.requestSequence) {
+                    return;
+                }
+
+                if (! response.ok) {
+                    this.error = response.status === 429
+                        ? 'Recherche temporairement limitée. Réessayez dans un instant.'
+                        : 'La recherche est momentanément indisponible.';
+                    this.stations = [];
+                    return;
+                }
+
+                const payload = await response.json();
+
+                if (requestId !== this.requestSequence) {
+                    return;
+                }
+
+                this.stations = payload.data ?? [];
+            } catch (error) {
+                if (error.name !== 'AbortError' && requestId === this.requestSequence) {
+                    this.error = 'La recherche est momentanément indisponible.';
+                    this.stations = [];
+                }
+            } finally {
+                if (requestId === this.requestSequence) {
+                    this.loading = false;
+                }
+            }
+        },
+
+        safeColor(value) {
+            return /^#[0-9a-fA-F]{3,8}$/.test(value || '') ? value : '#151515';
+        },
+
+        close() {
+            this.open = false;
+        },
+    };
+};
+
 window.fotometroLightbox = function fotometroLightbox() {
     return {
         open: false,

@@ -1,4 +1,4 @@
-<x-layouts.app title="Motifs de refus - fotométro">
+<x-layouts.app title="Motifs de refus - fotométro" :full-width="false">
     <div class="space-y-6">
         <div class="flex items-center justify-between gap-4">
             <div>

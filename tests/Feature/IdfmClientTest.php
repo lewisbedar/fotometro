@@ -76,6 +76,11 @@ class IdfmClientTest extends TestCase
 
     public function test_only_lines_uses_referentiel_des_lignes_export(): void
     {
+        // Defaults to the vendored resources/idfm-data/lines.csv snapshot (no HTTP call at
+        // all) — override it here to exercise the records->export URL conversion this test
+        // actually targets.
+        config(['fotometro.idfm.lines_url' => 'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/referentiel-des-lignes/records?limit=100']);
+
         Http::fake([
             'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/referentiel-des-lignes/exports/csv?limit=-1' => Http::response($this->csv([
                 ['id_line', 'shortname_line', 'name_line', 'transportmode', 'colourweb_hexa', 'textcolourweb_hexa'],

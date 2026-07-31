@@ -35,6 +35,25 @@ class UserRegistrationAndAuthTest extends TestCase
         $this->assertNotNull($user->username);
     }
 
+    public function test_registration_honeypot_pretends_success_without_creating_an_account(): void
+    {
+        Notification::fake();
+
+        $admin = User::factory()->create();
+
+        $response = $this->post(route('register.store'), [
+            'name' => 'Robot Spammeur',
+            'email' => 'robot@example.com',
+            'password' => 'MotDePasse1234',
+            'password_confirmation' => 'MotDePasse1234',
+            'website' => 'https://spam.example.com',
+        ]);
+
+        $response->assertRedirect(route('register.pending'));
+        $this->assertFalse(User::query()->where('email', 'robot@example.com')->exists());
+        Notification::assertNothingSentTo($admin);
+    }
+
     public function test_registration_notifies_every_admin(): void
     {
         Notification::fake();

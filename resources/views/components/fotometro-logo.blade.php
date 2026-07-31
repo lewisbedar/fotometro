@@ -1,3 +1,6 @@
+{{-- Pass :href="false" (not null) for a non-linking logo — @props' "??"
+     default-merging can't distinguish an explicit null from an omitted
+     attribute, so :href="null" silently falls back to route('home'). --}}
 @props([
     'href' => route('home'),
     'size' => 'default',

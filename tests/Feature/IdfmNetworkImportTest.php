@@ -256,11 +256,11 @@ class IdfmNetworkImportTest extends TestCase
     public function test_access_dataset_defaults_are_configured(): void
     {
         $this->assertSame(
-            'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/acces/exports/csv?limit=-1',
+            'file://'.base_path('resources/idfm-data/accesses.csv'),
             config('fotometro.idfm.accesses_url')
         );
         $this->assertSame(
-            'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/relations-acces/exports/csv?limit=-1',
+            'file://'.base_path('resources/idfm-data/access-relations.csv'),
             config('fotometro.idfm.access_relations_url')
         );
     }

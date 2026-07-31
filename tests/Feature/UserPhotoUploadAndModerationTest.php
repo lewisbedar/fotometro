@@ -11,6 +11,7 @@ use App\Models\PhotoCategory;
 use App\Models\PhotoRejectionReason;
 use App\Models\Station;
 use App\Models\User;
+use App\Notifications\PhotoPublishedNotification;
 use App\Notifications\PhotoRejectedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -92,6 +93,43 @@ class UserPhotoUploadAndModerationTest extends TestCase
         $this->assertSame(PhotoModerationStatus::Approved, $photo->moderation_status);
         $this->assertTrue($photo->is_published);
         $this->assertSame($moderator->id, $photo->moderated_by);
+    }
+
+    public function test_moderator_approving_a_pending_photo_notifies_the_submitter(): void
+    {
+        Notification::fake();
+
+        $moderator = User::factory()->moderator()->create();
+        $submitter = User::factory()->regularUser()->create();
+        $photo = Photo::factory()->create([
+            'moderation_status' => PhotoModerationStatus::Pending,
+            'is_published' => false,
+            'user_id' => $submitter->id,
+        ]);
+
+        Livewire::actingAs($moderator)
+            ->test(PhotoModerationQueue::class)
+            ->call('approve');
+
+        Notification::assertSentTo($submitter, PhotoPublishedNotification::class);
+    }
+
+    public function test_admin_imported_photos_without_a_submitter_do_not_trigger_a_notification(): void
+    {
+        Notification::fake();
+
+        $moderator = User::factory()->moderator()->create();
+        $photo = Photo::factory()->create([
+            'moderation_status' => PhotoModerationStatus::Pending,
+            'is_published' => false,
+            'user_id' => null,
+        ]);
+
+        Livewire::actingAs($moderator)
+            ->test(PhotoModerationQueue::class)
+            ->call('approve');
+
+        Notification::assertNothingSent();
     }
 
     public function test_moderator_can_reject_a_pending_photo_with_a_reason_and_notify_the_submitter(): void

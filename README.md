@@ -64,7 +64,7 @@ Le driver `style` reste disponible pour tester ultérieurement un style vectorie
 
 ## Compte administrateur
 
-L'inscription publique n'existe pas. Le seeder crée le compte administrateur depuis:
+Le seeder crée le compte administrateur initial depuis:
 
 ```dotenv
 ADMIN_NAME="Administrateur fotometro"
@@ -72,15 +72,21 @@ ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=choisir-un-mot-de-passe
 ```
 
+L'inscription publique (`/inscription`) existe par ailleurs : tout compte créé reste `pending` jusqu'à approbation par un administrateur depuis `/admin/users`, et le formulaire est protégé par un champ honeypot invisible (`RegisteredUserController::store()`).
+
 ## Pages et routes publiques
 
 - `/`: explorateur cartographique
 - `/api/map`: données publiques de carte
-- `/api/map/search?q=...`: recherche publique limitée
+- `/api/map/search?q=...`: recherche publique limitée (aussi utilisée par la barre de recherche du layout standard, voir `docs/map.md`)
 - `/stations/{slug}`: fiche publique d'une station
 - `/lignes/{slug}`: fiche publique d'une ligne
-- `/login`: connexion administrateur
-- `/admin`: tableau de bord administrateur
+- `/photos/{slug}`: fiche publique d'une photo
+- `/profil/{username}`: profil public d'un contributeur
+- `/sitemap.xml`, `/robots.txt`: générés dynamiquement (`SitemapController`, `routes/web.php`)
+- `/login`, `/inscription`: connexion et inscription
+- `/televerser`: ajout de photo par un compte approuvé
+- `/admin`: tableau de bord administrateur/modérateur
 
 ## Tests
 

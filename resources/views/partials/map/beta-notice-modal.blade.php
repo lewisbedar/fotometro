@@ -14,6 +14,10 @@
             <button type="button" class="map-icon-button inline-flex items-center justify-center" x-ref="betaNoticeClose" x-on:click="closeBetaNotice()" aria-label="Fermer la fenêtre de bienvenue"><x-icons.close class="h-4 w-4" /></button>
         </div>
 
+        @if (file_exists(public_path('images/img_beta.png')))
+            <img src="{{ asset('images/img_beta.png') }}" alt="" class="mt-4 h-[238px] w-full rounded-lg object-cover">
+        @endif
+
         <div class="mt-5 space-y-4 text-sm leading-6 text-black/70">
             <p>fotométro est une plateforme conçue pour cataloguer et présenter des photographies des stations du métro parisien.</p>
             <p>Vous avez pris une photo du quai de la ligne 3 direction Pont de Levallois – Bécon à Saint-Lazare et vous souhaitez la partager dans une photothèque ? Eh bien, cette plateforme est faite pour vous !</p>
@@ -27,22 +31,13 @@
 
             <section class="rounded-md bg-white/70 p-3 ring-1 ring-black/10">
                 <h3 class="font-semibold">Qu’est-ce qui fonctionne actuellement ?</h3>
-                <p class="mt-1 text-black/60">La carte interactive et les fiches des stations sont accessibles.</p>
-                <p class="mt-2 text-black/60">Vous ne pouvez pas encore créer de compte ni ajouter vos propres photos.</p>
-                <p class="mt-2 text-black/60">Pour le moment, seules deux stations disposent de photographies :</p>
-                <ul class="mt-1 list-disc space-y-1 pl-5 text-black/60">
-                    <li>Franklin D. Roosevelt (lignes 1 et 9) ;</li>
-                    <li>Botzaris (ligne 7bis).</li>
-                </ul>
+                <p class="mt-1 text-black/60">Quasiment tout, la carte est accessible, vous pouvez consulter une ligne, sélectionner une station et voir les photos.</p>
+                <p class="mt-2 text-black/60">La création de compte est possible mais est soumise à une vérification de ma part. Vous pouvez partager vos photos sur la plateforme une fois votre compte crée et validé. Les photos sont modérées, si vous souhaitez devenir modérateur, n'hésitez pas à me contacter.</p>
             </section>
 
             <section class="rounded-md bg-white/70 p-3 ring-1 ring-black/10">
                 <h3 class="font-semibold">Et ensuite ?</h3>
-                <p class="mt-1 text-black/60">La priorité est maintenant d’améliorer le processus de catalogage des photographies :</p>
-                <ul class="mt-1 list-disc space-y-1 pl-5 text-black/60">
-                    <li>détecter automatiquement la station grâce aux données EXIF de la photo ;</li>
-                    <li>améliorer le classement et le filtrage des photographies : signalétique, architecture, détails techniques, entrées et sorties, etc.</li>
-                </ul>
+                <p class="mt-1 text-black/60">La priorité est maintenant de constituer une bonne base de photographies : plus il y aura de contributions, plus la plateforme sera utile et complète.</p>
                 <p class="mt-2 text-black/60">Pour l’instant, la plateforme est uniquement pour les stations de métro. J’exclus donc toutes les nombreuses stations de RER et de Transilien.</p>
             </section>
 

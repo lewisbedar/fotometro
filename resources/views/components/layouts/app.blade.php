@@ -59,10 +59,11 @@
             ])>
                 <header class="flex flex-wrap items-center justify-between gap-4 border-b border-black/10 pb-5">
                     <x-fotometro-logo />
+                    @include('partials.site-search')
                     <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
                         @auth
                             @if (auth()->user()->canModerate())
-                                <nav class="flex flex-wrap items-center gap-1 rounded-full bg-black/5 p-1 text-xs sm:text-sm">
+                                <nav class="hidden flex-wrap items-center gap-1 rounded-full bg-black/5 p-1 text-xs sm:flex sm:text-sm">
                                     <a href="{{ route('admin.dashboard') }}" class="rounded-full px-3 py-1.5 font-medium transition {{ request()->routeIs('admin.dashboard') ? 'bg-black text-white' : 'text-[#151515] hover:bg-black/10' }}">Tableau de bord</a>
                                     <a href="{{ route('admin.moderation.index') }}" class="rounded-full px-3 py-1.5 font-medium transition {{ request()->routeIs('admin.moderation.*') ? 'bg-black text-white' : 'text-[#151515] hover:bg-black/10' }}">Modération</a>
                                     @if (auth()->user()->isAdmin())
@@ -87,14 +88,37 @@
                                         </div>
                                     @endif
                                 </nav>
+
+                                <div class="relative sm:hidden" x-data="{ open: false }" x-on:click.outside="open = false">
+                                    <button
+                                        type="button"
+                                        x-on:click="open = ! open"
+                                        x-bind:aria-expanded="open.toString()"
+                                        aria-label="Menu d'administration"
+                                        class="inline-flex min-h-9 items-center justify-center rounded-md border border-black/15 bg-white px-2"
+                                    >
+                                        <x-icons.menu class="h-5 w-5" />
+                                    </button>
+                                    <div x-show="open" x-cloak x-transition class="absolute left-0 top-full z-20 w-56 rounded-lg bg-white px-1.5 pb-1.5 pt-2.5 text-left text-sm shadow-lg ring-1 ring-black/10">
+                                        <a href="{{ route('admin.dashboard') }}" class="block rounded-md px-3 py-2 font-medium {{ request()->routeIs('admin.dashboard') ? 'bg-black text-white' : 'hover:bg-black/5' }}">Tableau de bord</a>
+                                        <a href="{{ route('admin.moderation.index') }}" class="block rounded-md px-3 py-2 font-medium {{ request()->routeIs('admin.moderation.*') ? 'bg-black text-white' : 'hover:bg-black/5' }}">Modération</a>
+                                        @if (auth()->user()->isAdmin())
+                                            <a href="{{ route('admin.photos.index') }}" class="block rounded-md px-3 py-2 font-medium {{ request()->routeIs('admin.photos.*') ? 'bg-black text-white' : 'hover:bg-black/5' }}">Photos</a>
+                                            <a href="{{ route('admin.users.index') }}" class="block rounded-md px-3 py-2 font-medium {{ request()->routeIs('admin.users.*') ? 'bg-black text-white' : 'hover:bg-black/5' }}">Comptes</a>
+                                            <div class="my-1 border-t border-black/10"></div>
+                                            <a href="{{ route('admin.photo-categories.index') }}" class="block rounded-md px-3 py-2 font-medium {{ request()->routeIs('admin.photo-categories.*') ? 'bg-black text-white' : 'hover:bg-black/5' }}">Catégories</a>
+                                            <a href="{{ route('admin.photo-rejection-reasons.index') }}" class="block rounded-md px-3 py-2 font-medium {{ request()->routeIs('admin.photo-rejection-reasons.*') ? 'bg-black text-white' : 'hover:bg-black/5' }}">Motifs de refus</a>
+                                        @endif
+                                    </div>
+                                </div>
                             @endif
-                            <a href="{{ route('photos.upload.create') }}" class="rounded-md bg-green-700 px-3 py-2 text-xs font-medium text-white hover:bg-green-800 sm:text-sm">Ajouter une photo</a>
-                            <div class="relative" x-data="{ open: false }" x-on:mouseenter="open = true" x-on:mouseleave="open = false">
-                                <button type="button" x-bind:aria-expanded="open.toString()" title="Mon compte">
+                            <a href="{{ route('photos.upload.create') }}" class="inline-flex min-h-9 items-center rounded-md bg-green-700 px-3 text-xs font-medium text-white hover:bg-green-800 sm:text-sm">Ajouter une photo</a>
+                            <div class="relative flex" x-data="{ open: false }" x-on:mouseenter="open = true" x-on:mouseleave="open = false">
+                                <button type="button" class="flex" x-bind:aria-expanded="open.toString()" title="Mon compte">
                                     @if (auth()->user()->avatar_url)
-                                        <img src="{{ auth()->user()->avatar_url }}" alt="Photo de profil de {{ auth()->user()->name }}" class="h-8 w-8 rounded-full object-cover ring-1 ring-black/10">
+                                        <img src="{{ auth()->user()->avatar_url }}" alt="Photo de profil de {{ auth()->user()->name }}" class="h-9 w-9 rounded-full object-cover ring-1 ring-black/10">
                                     @else
-                                        <span class="grid h-8 w-8 place-items-center rounded-full bg-black/10 text-xs font-semibold text-black/50 ring-1 ring-black/10">
+                                        <span class="grid h-9 w-9 place-items-center rounded-full bg-black/10 text-xs font-semibold text-black/50 ring-1 ring-black/10">
                                             {{ Str::of(auth()->user()->name)->substr(0, 1)->upper() }}
                                         </span>
                                     @endif
@@ -110,7 +134,7 @@
                                 </div>
                             </div>
                         @else
-                            <a href="{{ route('login') }}" class="rounded-md border border-black/15 bg-white px-3 py-2 text-xs font-medium hover:bg-black hover:text-white sm:text-sm">
+                            <a href="{{ route('login') }}" class="inline-flex min-h-9 items-center rounded-md border border-black/15 bg-white px-3 text-xs font-medium hover:bg-black hover:text-white sm:text-sm">
                                 Connexion
                             </a>
                         @endauth

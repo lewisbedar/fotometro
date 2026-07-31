@@ -56,10 +56,17 @@ class StationAccess extends Model
     {
         $label = trim((string) ($this->name ?: $this->reference ?: $this->description));
 
-        if ($label !== '') {
-            return $label;
+        if ($label === '') {
+            return 'Accès '.(($index ?? 0) + 1);
         }
 
-        return 'Accès '.(($index ?? 0) + 1);
+        // Only append entrance/exit for the one-directional cases: stations
+        // sometimes have two accesses sharing the same street name, one entry-only
+        // and one exit-only, which otherwise look like an exact duplicate in
+        // dropdowns. The common bidirectional case isn't worth calling out.
+        return match ($this->access_type) {
+            'Entrée', 'Sortie' => "{$label} ({$this->access_type})",
+            default => $label,
+        };
     }
 }

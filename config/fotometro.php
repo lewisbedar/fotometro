@@ -50,15 +50,23 @@ return [
         'quality' => (int) env('FOTOMETRO_AVATAR_QUALITY', 85),
     ],
 
+    // Lines/stations/accesses default to the snapshot vendored under resources/idfm-data/
+    // (see App\Console\Commands\VendorIdfmDataCommand) instead of IDFM's live API: this
+    // network barely changes day to day, and a committed snapshot means production imports
+    // don't depend on IDFM's API being reachable. Override via env to point back at a live
+    // URL (e.g. https://data.iledefrance-mobilites.fr/.../acces/exports/csv?limit=-1) for a
+    // one-off fetch — or just run `php artisan fotometro:vendor-idfm-data` to refresh the
+    // snapshot from IDFM and commit the result. GTFS stays live: at 100+MB it doesn't fit in
+    // git, and it's only needed for the rare --only=gtfs topology import.
     'idfm' => [
-        'lines_url' => env('FOTOMETRO_IDFM_LINES_URL', 'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/referentiel-des-lignes/records?limit=100'),
-        'arrets_lignes_url' => env('FOTOMETRO_IDFM_ARRETS_LIGNES_URL', 'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/arrets-lignes/records?limit=100'),
-        'stop_areas_url' => env('FOTOMETRO_IDFM_STOP_AREAS_URL', 'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/zones-d-arrets/exports/csv?limit=-1'),
-        'stop_relations_url' => env('FOTOMETRO_IDFM_STOP_RELATIONS_URL', 'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/relations/exports/csv?limit=-1'),
-        'traces_url' => env('FOTOMETRO_IDFM_TRACES_URL', 'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/traces-des-lignes-de-transport-en-commun-idfm/records?limit=100'),
+        'lines_url' => env('FOTOMETRO_IDFM_LINES_URL', 'file://'.base_path('resources/idfm-data/lines.csv')),
+        'arrets_lignes_url' => env('FOTOMETRO_IDFM_ARRETS_LIGNES_URL', 'file://'.base_path('resources/idfm-data/arrets-lignes.csv')),
+        'stop_areas_url' => env('FOTOMETRO_IDFM_STOP_AREAS_URL', 'file://'.base_path('resources/idfm-data/stop-areas.csv')),
+        'stop_relations_url' => env('FOTOMETRO_IDFM_STOP_RELATIONS_URL', 'file://'.base_path('resources/idfm-data/stop-relations.csv')),
+        'traces_url' => env('FOTOMETRO_IDFM_TRACES_URL', 'file://'.base_path('resources/idfm-data/traces.csv')),
         'gtfs_url' => env('FOTOMETRO_IDFM_GTFS_URL', 'https://data.iledefrance.fr/api/explore/v2.1/catalog/datasets/offre-horaires-tc-gtfs-idfm/records?limit=1'),
-        'accesses_url' => env('FOTOMETRO_IDFM_ACCESSES_URL', 'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/acces/exports/csv?limit=-1'),
-        'access_relations_url' => env('FOTOMETRO_IDFM_ACCESS_RELATIONS_URL', 'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/relations-acces/exports/csv?limit=-1'),
+        'accesses_url' => env('FOTOMETRO_IDFM_ACCESSES_URL', 'file://'.base_path('resources/idfm-data/accesses.csv')),
+        'access_relations_url' => env('FOTOMETRO_IDFM_ACCESS_RELATIONS_URL', 'file://'.base_path('resources/idfm-data/access-relations.csv')),
         'timeout' => (int) env('FOTOMETRO_IDFM_TIMEOUT', 30),
         'temp_dir' => env('FOTOMETRO_IDFM_TEMP_DIR', storage_path('app/idfm')),
         'import_accesses' => filter_var(env('FOTOMETRO_IDFM_IMPORT_ACCESSES', true), FILTER_VALIDATE_BOOL),

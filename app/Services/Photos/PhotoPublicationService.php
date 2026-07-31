@@ -6,6 +6,7 @@ use App\Enums\PhotoModerationStatus;
 use App\Enums\PhotoProcessingStatus;
 use App\Models\Photo;
 use App\Models\PhotoRejectionReason;
+use App\Notifications\PhotoPublishedNotification;
 use App\Notifications\PhotoRejectedNotification;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,6 +23,8 @@ class PhotoPublicationService
             return false;
         }
 
+        $wasPublished = $photo->is_published;
+
         $photo->forceFill([
             'is_published' => true,
             'published_at' => $photo->published_at ?? now(),
@@ -29,6 +32,12 @@ class PhotoPublicationService
             'moderated_at' => $photo->moderated_at ?? now(),
             'moderated_by' => $photo->moderated_by ?? Auth::id(),
         ])->save();
+
+        // Only on the first publish transition, not on a re-save (e.g. the
+        // moderation queue's edit-then-republish flow calling publish() again).
+        if (! $wasPublished && $photo->user_id) {
+            $photo->user->notify(new PhotoPublishedNotification($photo));
+        }
 
         $this->afterVisibilityChange($photo);
 

@@ -19,14 +19,32 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicPhotoController;
 use App\Http\Controllers\PublicLineController;
 use App\Http\Controllers\PublicStationController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\StationSearchController;
 use App\Http\Resources\MapLineResource;
+use App\Services\Photos\AuthShowcasePhoto;
 use App\Models\Line;
 use App\Models\Station;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 
 Route::get('/', HomeController::class)->name('home');
+Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
+Route::get('/robots.txt', function () {
+    return response(implode("\n", [
+        'User-agent: *',
+        'Disallow: /admin',
+        'Disallow: /login',
+        'Disallow: /inscription',
+        'Disallow: /parametres',
+        'Disallow: /televerser',
+        'Disallow: /mot-de-passe-oublie',
+        'Disallow: /reinitialiser-mot-de-passe',
+        'Disallow: /api/',
+        '',
+        'Sitemap: '.route('sitemap'),
+    ]), 200, ['Content-Type' => 'text/plain']);
+})->name('robots');
 Route::get('/map-diagnostic', fn () => app()->isLocal()
     ? view('map-diagnostic')
     : abort(404))->name('map.diagnostic');
@@ -82,7 +100,7 @@ Route::middleware('guest')->group(function (): void {
 
     Route::get('/inscription', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/inscription', [RegisteredUserController::class, 'store'])->middleware('throttle:register')->name('register.store');
-    Route::get('/inscription/en-attente', fn () => view('auth.register-pending'))->name('register.pending');
+    Route::get('/inscription/en-attente', fn (AuthShowcasePhoto $showcasePhoto) => view('auth.register-pending', ['showcasePhoto' => $showcasePhoto->random()]))->name('register.pending');
 
     Route::get('/mot-de-passe-oublie', [PasswordResetLinkController::class, 'create'])->name('password.request');
     Route::post('/mot-de-passe-oublie', [PasswordResetLinkController::class, 'store'])->middleware('throttle:password-reset')->name('password.email');
