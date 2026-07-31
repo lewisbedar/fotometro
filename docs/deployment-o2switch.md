@@ -132,11 +132,14 @@ Sur o2switch, PHP tourne généralement sous votre propre utilisateur cPanel : `
 
 ## 7. Cron
 
-Aucun worker permanent n'est requis avec `FOTOMETRO_PHOTO_PROCESS_SYNCHRONOUSLY=true`. Un cron Laravel classique reste utile si des tâches planifiées sont ajoutées plus tard :
+Aucun worker permanent n'est requis avec `FOTOMETRO_PHOTO_PROCESS_SYNCHRONOUSLY=true`. En revanche, les emails (inscription, approbation/refus de compte, photo publiée/refusée) sont envoyés via des notifications mises en file d'attente (`ShouldQueue`) plutôt que pendant la requête HTTP — sans quoi un SMTP lent ou injoignable bloque la requête jusqu'au timeout du serveur (504 Gateway Time-out), sans rien écrire dans `storage/logs/laravel.log` puisque le blocage a lieu avant qu'une exception ne soit levée. Il faut donc un cron qui vide périodiquement cette file, sans worker permanent :
 
 ```cron
 * * * * * cd /home/USER/fotometro-app && php artisan schedule:run >> /dev/null 2>&1
+* * * * * cd /home/USER/fotometro-app && php artisan queue:work --stop-when-empty --max-time=50 >> /dev/null 2>&1
 ```
+
+`--stop-when-empty` fait sortir la commande dès que la file est vide (ou après `--max-time` secondes) : elle ne laisse donc jamais de processus PHP durable, contrairement à `queue:work` seul — compatible avec un mutualisé.
 
 ## 8. Traitement asynchrone des photos (optionnel, plus tard)
 

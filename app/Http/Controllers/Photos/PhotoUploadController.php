@@ -39,6 +39,14 @@ class PhotoUploadController extends Controller
 
         // user_id and moderation_status come only from server-side context —
         // never from the request body — regardless of what the client sends.
+        //
+        // Admins/moderators skip the moderation queue for their own uploads:
+        // Photo::scopeAwaitingModeration() deliberately excludes photos
+        // submitted by the moderator viewing the queue (to avoid self-review),
+        // which otherwise leaves a sole admin's own upload stuck pending
+        // forever since nobody else ever sees it in the queue to approve it.
+        $bypassesModeration = $request->user()->canModerate();
+
         $importer->import($data['file'], [
             'station_id' => $data['station_id'],
             'station_access_id' => $data['station_access_id'] ?? null,
@@ -46,9 +54,9 @@ class PhotoUploadController extends Controller
             'photo_category_ids' => $data['photo_category_ids'] ?? [],
             'description' => $data['description'] ?? null,
             'copyright_holder' => $request->user()->name,
-            'publish_when_ready' => false,
+            'publish_when_ready' => $bypassesModeration,
             'user_id' => $request->user()->id,
-            'moderation_status' => PhotoModerationStatus::Pending,
+            'moderation_status' => $bypassesModeration ? PhotoModerationStatus::Approved : PhotoModerationStatus::Pending,
         ]);
 
         return redirect()->route('photos.upload.thanks');

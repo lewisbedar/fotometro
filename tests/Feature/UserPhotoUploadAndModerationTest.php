@@ -48,6 +48,28 @@ class UserPhotoUploadAndModerationTest extends TestCase
         $this->assertFalse(Photo::query()->publiclyVisible()->whereKey($photo->id)->exists());
     }
 
+    public function test_admin_upload_bypasses_moderation_since_nobody_else_could_ever_approve_it(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $admin = User::factory()->create();
+        $station = Station::factory()->create();
+
+        $this->actingAs($admin)->post(route('photos.upload.store'), [
+            'file' => UploadedFile::fake()->image('ma-photo.jpg', 1200, 800),
+            'station_id' => $station->id,
+        ])->assertRedirect(route('photos.upload.thanks'));
+
+        $photo = Photo::query()->where('station_id', $station->id)->firstOrFail();
+
+        $this->assertSame(PhotoModerationStatus::Approved, $photo->moderation_status);
+        $this->assertTrue($photo->publish_when_ready);
+        // Even if another moderator existed, awaitingModeration() would still
+        // exclude this photo — it was never Pending in the first place.
+        $this->assertFalse(Photo::query()->awaitingModeration()->whereKey($photo->id)->exists());
+    }
+
     public function test_upload_ignores_a_user_id_or_moderation_status_supplied_in_the_request(): void
     {
         Storage::fake('local');

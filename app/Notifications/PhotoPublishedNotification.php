@@ -4,12 +4,14 @@ namespace App\Notifications;
 
 use App\Models\Photo;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Queue\SerializesModels;
 
-class PhotoPublishedNotification extends Notification
+class PhotoPublishedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, SerializesModels;
 
     public function __construct(
         private readonly Photo $photo,
