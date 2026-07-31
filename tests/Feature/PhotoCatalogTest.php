@@ -300,6 +300,31 @@ class PhotoCatalogTest extends TestCase
             ->assertJsonMissing(['source_payload' => ['secret' => true]]);
     }
 
+    public function test_admin_store_allows_a_multi_line_station_photo_with_no_specific_line(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $line = Line::factory()->create(['code' => '1']);
+        $otherLine = Line::factory()->create(['code' => '13']);
+        $station = Station::factory()->create(['name' => 'Champs-Élysées - Clemenceau']);
+        $line->stations()->attach($station->id, ['position' => 1]);
+        $otherLine->stations()->attach($station->id, ['position' => 1]);
+
+        // Simulates the "cette photo concerne toute la station" checkbox the
+        // wizard shows for multi-line stations: the submitted line_id is
+        // empty even though the station serves several lines.
+        $this->actingAs(User::factory()->create())->post(route('photos.upload.store'), [
+            'license' => 'all_rights_reserved',
+            'publish_mode' => 'auto',
+            'files' => [UploadedFile::fake()->image('entree.jpg', 800, 600)],
+            'photos' => [['station_id' => $station->id, 'line_id' => '']],
+        ])->assertRedirect(route('admin.photos.index'));
+
+        $photo = Photo::query()->where('station_id', $station->id)->firstOrFail();
+        $this->assertNull($photo->line_id);
+    }
+
     public function test_admin_photo_forms_use_line_station_access_filtering_with_edit_preselection(): void
     {
         $line = Line::factory()->create(['code' => '4']);

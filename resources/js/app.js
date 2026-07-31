@@ -1490,6 +1490,15 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
                 svg.appendChild(stations);
                 host.appendChild(svg);
                 this.fixTerminusBoxWidths(svg);
+
+                // getComputedTextLength() above only reflects the real font
+                // once it's actually loaded — on a first paint (notably in
+                // Safari, which swaps web fonts later/differently than
+                // Chrome) it can still measure against the fallback font,
+                // leaving the terminus cartouche sized for the wrong glyph
+                // widths. Re-run once the real font is confirmed ready.
+                document.fonts?.ready?.then(() => this.fixTerminusBoxWidths(svg));
+
                 this.bindDiagramScrollInteractions();
                 this.sizeDiagramPanelToContent(host);
                 this.logDiagramScrollDiagnostic(layout, svg, host);
@@ -2078,6 +2087,7 @@ window.fotometroPhotoForm = function fotometroPhotoForm(options) {
         mapConfig: buildAdminMapConfig(options.mapConfig || {}),
         lineStationsUrl: options.lineStationsUrl,
         stationAccessesUrl: options.stationAccessesUrl,
+        coversWholeStation: false,
 
         async init() {
             if (this.lineId) {
@@ -2095,6 +2105,7 @@ window.fotometroPhotoForm = function fotometroPhotoForm(options) {
             this.accessId = '';
             this.stations = [];
             this.accesses = [];
+            this.coversWholeStation = false;
             this.clearMarkers();
             this.mapStatus = this.lineId ? 'Chargement des stations...' : 'Sélectionnez une station.';
 
@@ -2106,8 +2117,15 @@ window.fotometroPhotoForm = function fotometroPhotoForm(options) {
         async stationChanged() {
             this.accessId = '';
             this.accesses = [];
+            this.coversWholeStation = false;
             await this.loadAccesses(false);
             await this.refreshMap();
+        },
+
+        stationHasMultipleLines() {
+            const station = this.selectedStation();
+
+            return !! station && Array.isArray(station.lines) && station.lines.length > 1;
         },
 
         accessChanged() {
@@ -2381,6 +2399,7 @@ window.fotometroPhotoImportWizard = function fotometroPhotoImportWizard(options)
                 categoryIds: [],
                 description: '',
                 detectionStatus: 'Détection de la station en cours...',
+                coversWholeStation: false,
             };
 
             this.photos.push(photo);
@@ -2443,6 +2462,7 @@ window.fotometroPhotoImportWizard = function fotometroPhotoImportWizard(options)
             photo.accessId = '';
             photo.stations = [];
             photo.accesses = [];
+            photo.coversWholeStation = false;
 
             if (photo.lineId) {
                 await this.loadStationsFor(photo, false);
@@ -2452,7 +2472,14 @@ window.fotometroPhotoImportWizard = function fotometroPhotoImportWizard(options)
         async stationChangedFor(photo) {
             photo.accessId = '';
             photo.accesses = [];
+            photo.coversWholeStation = false;
             await this.loadAccessesFor(photo);
+        },
+
+        stationHasMultipleLinesFor(photo) {
+            const station = photo.stations.find((candidate) => String(candidate.id) === String(photo.stationId));
+
+            return !! station && Array.isArray(station.lines) && station.lines.length > 1;
         },
 
         async loadStationsFor(photo, keepSelection) {
@@ -2541,6 +2568,7 @@ window.fotometroPhotoImportWizard = function fotometroPhotoImportWizard(options)
                 photo.accessId = source.accessId;
                 photo.stations = source.stations;
                 photo.accesses = source.accesses;
+                photo.coversWholeStation = source.coversWholeStation;
             });
         },
 

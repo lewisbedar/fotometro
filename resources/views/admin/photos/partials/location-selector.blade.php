@@ -28,7 +28,6 @@
             Ligne
             <select
                 id="photo-line-id"
-                name="line_id"
                 class="mt-1 w-full rounded-md border border-black/15 bg-white p-2"
                 x-model="lineId"
                 x-on:change="lineChanged()"
@@ -76,6 +75,26 @@
                 </template>
             </select>
         </label>
+    </div>
+
+    <input type="hidden" name="line_id" :value="coversWholeStation ? '' : lineId">
+
+    <div x-show="stationHasMultipleLines()" x-cloak class="flex items-start gap-2 rounded-md border border-black/10 bg-white p-3">
+        <label class="flex flex-1 items-start gap-2 text-sm font-semibold">
+            <input type="checkbox" class="mt-0.5" x-model="coversWholeStation">
+            <span>Cette photo concerne toute la station, pas seulement la ligne choisie</span>
+        </label>
+        <div class="group relative">
+            <button type="button" class="text-black/50 hover:text-black" aria-label="Aide">
+                <x-icons.help class="h-5 w-5" />
+            </button>
+            <div
+                class="pointer-events-none absolute right-0 z-10 mt-2 w-72 rounded-md border border-black/10 bg-white p-3 text-sm text-black/70 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+            >
+                Certaines stations desservent plusieurs lignes (correspondances). Cochez cette case si la photo montre un élément commun à toute la station — une entrée, un couloir de correspondance, un totem — plutôt qu’un élément propre à une seule ligne.
+                <p class="mt-2 text-black/55">Exemple : l’entrée principale de Champs-Élysées - Clemenceau (lignes 1 et 13) concerne toute la station.</p>
+            </div>
+        </div>
     </div>
 
     <div class="rounded-lg border border-black/10 bg-white p-3">

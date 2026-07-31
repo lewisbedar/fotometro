@@ -135,7 +135,25 @@
 
                                     <input type="hidden" :name="`photos[${index}][station_id]`" :value="photo.stationId">
                                     <input type="hidden" :name="`photos[${index}][station_access_id]`" :value="photo.accessId">
-                                    <input type="hidden" :name="`photos[${index}][line_id]`" :value="photo.lineId">
+                                    <input type="hidden" :name="`photos[${index}][line_id]`" :value="photo.coversWholeStation ? '' : photo.lineId">
+                                </div>
+
+                                <div class="flex items-start gap-2 rounded-md border border-black/10 bg-white p-3" x-show="stationHasMultipleLinesFor(photo)" x-cloak>
+                                    <label class="flex flex-1 items-start gap-2 text-sm font-semibold">
+                                        <input type="checkbox" class="mt-0.5" x-model="photo.coversWholeStation">
+                                        <span>Cette photo concerne toute la station, pas seulement la ligne choisie</span>
+                                    </label>
+                                    <div class="group relative">
+                                        <button type="button" class="text-black/50 hover:text-black" aria-label="Aide">
+                                            <x-icons.help class="h-5 w-5" />
+                                        </button>
+                                        <div
+                                            class="pointer-events-none absolute right-0 z-10 mt-2 w-72 rounded-md border border-black/10 bg-white p-3 text-sm text-black/70 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                                        >
+                                            Certaines stations desservent plusieurs lignes (correspondances). Cochez cette case si la photo montre un élément commun à toute la station — une entrée, un couloir de correspondance, un totem — plutôt qu’un élément propre à une seule ligne.
+                                            <p class="mt-2 text-black/55">Exemple : l’entrée principale de Champs-Élysées - Clemenceau (lignes 1 et 13) concerne toute la station.</p>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="grid gap-3 lg:grid-cols-[1fr_auto]">
