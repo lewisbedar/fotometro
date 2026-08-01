@@ -1,11 +1,17 @@
-import 'maplibre-gl/dist/maplibre-gl.css';
-
 const maplibreWorkerUrl = '/vendor/maplibre-gl/maplibre-gl-worker.mjs';
 
 let maplibrePromise = null;
 
+// maplibre-gl's JS was already dynamic-import()'d (its own chunk, only
+// fetched once a map actually renders) — but its ~70KB CSS was a static
+// top-level import, which Vite bundles into every page's stylesheet
+// regardless of whether that page shows a map at all (photo pages, account
+// settings, etc.). Importing it here too makes the CSS just as lazy.
 async function loadMapLibre() {
-    maplibrePromise ??= import('maplibre-gl').then((maplibregl) => {
+    maplibrePromise ??= Promise.all([
+        import('maplibre-gl'),
+        import('maplibre-gl/dist/maplibre-gl.css'),
+    ]).then(([maplibregl]) => {
         if (! maplibregl.getWorkerUrl?.()) {
             maplibregl.setWorkerUrl?.(maplibreWorkerUrl);
         }
