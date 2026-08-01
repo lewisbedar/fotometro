@@ -1534,11 +1534,17 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
             panel.style.width = `${Math.round(width)}px`;
         },
 
-        // The PHP layout estimates each label's width from its character
-        // count to size things before anything is rendered, but that's only
-        // ever an approximation of the real font metrics - once the SVG is
-        // in the DOM, shrink each terminus cartouche to the label's actual
-        // rendered width so no extra blue trails past the last letter.
+        // The PHP layout estimates each label's box from its character count
+        // to size things before anything is rendered, but that's only ever
+        // an approximation of the real font metrics - once the SVG is in the
+        // DOM, snap each terminus cartouche to the label's actual rendered
+        // bounding box so it doesn't trail past the text or sit offset from
+        // it. Uses text.getBBox() (the rendered box of the whole <text>,
+        // tspans included) rather than summing per-tspan
+        // getComputedTextLength() — WebKit/Safari has a long-standing bug
+        // where that call on a <tspan> can return the wrong line's length,
+        // which showed up as the terminus name sitting visibly offset from
+        // its blue background on Safari specifically.
         fixTerminusBoxWidths(svg) {
             svg.querySelectorAll('.diagram-svg-station.is-terminus').forEach((stationGroup) => {
                 const text = stationGroup.querySelector('text.diagram-svg-label');
@@ -1548,21 +1554,22 @@ window.fotometroMapExplorer = function fotometroMapExplorer(dataset) {
                     return;
                 }
 
-                const measuredWidth = Math.max(0, ...[...text.querySelectorAll('tspan')].map((tspan) => {
-                    try {
-                        return tspan.getComputedTextLength();
-                    } catch (error) {
-                        return 0;
-                    }
-                }));
+                let bbox;
 
-                if (! Number.isFinite(measuredWidth) || measuredWidth <= 0) {
+                try {
+                    bbox = text.getBBox();
+                } catch (error) {
                     return;
                 }
 
-                const labelX = Number(text.getAttribute('x'));
-                box.setAttribute('x', String(labelX - 4));
-                box.setAttribute('width', String(measuredWidth + 8));
+                if (! bbox || ! Number.isFinite(bbox.width) || bbox.width <= 0) {
+                    return;
+                }
+
+                box.setAttribute('x', String(bbox.x - 4));
+                box.setAttribute('y', String(bbox.y - 5));
+                box.setAttribute('width', String(bbox.width + 8));
+                box.setAttribute('height', String(bbox.height + 10));
             });
         },
 

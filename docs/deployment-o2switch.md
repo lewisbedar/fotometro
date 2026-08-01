@@ -183,6 +183,8 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 php artisan up
 ```
 
+Le fichier `VERSION` à la racine du dépôt (numéro affiché dans la fenêtre « À propos ») est mis à jour manuellement, en général avant ou après un lot de commits notable — pas à chaque commit individuel. Après un `git pull`, `php artisan config:cache` (déjà dans la séquence ci-dessus) est nécessaire pour que la nouvelle valeur soit prise en compte, sans quoi l'ancien numéro reste affiché même si le fichier a changé.
+
 Si des fichiers front (CSS/JS/Blade) ont changé, recompiler les assets **en local** (`npm run build`) et envoyer `public/build/` et `public/vendor/maplibre-gl/` par SFTP avant ces commandes — voir §2.
 
 ### Points de vigilance pour une installation déjà en place

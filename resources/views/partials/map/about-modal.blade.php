@@ -52,6 +52,9 @@
             </div>
 
             <p class="text-center italic text-black/50">Fotométro n’est pas affilié à la RATP ou à Île-de-France Mobilités.</p>
+            @if (config('fotometro.version'))
+                <p class="text-center text-xs text-black/40">Version {{ config('fotometro.version') }}</p>
+            @endif
         </div>
     </section>
 </div>

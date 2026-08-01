@@ -7,6 +7,12 @@ if (! in_array($mapBasemapDriver, ['raster', 'style'], true)) {
 }
 
 return [
+    // Bumped by hand alongside meaningful commits (see VERSION at the repo
+    // root) — shown in the "À propos" modal so it's obvious at a glance
+    // whether a given environment (prod vs. local) is running the latest
+    // code, without needing shell/git access to check.
+    'version' => trim((string) @file_get_contents(base_path('VERSION'))) ?: null,
+
     'map' => [
         'basemap_driver' => $mapBasemapDriver,
         'style_url' => env('FOTOMETRO_MAP_STYLE_URL'),
