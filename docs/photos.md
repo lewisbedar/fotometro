@@ -87,5 +87,9 @@ Dissuasion « casual » uniquement — rien de tout cela n'empêche une capture 
 - Clic droit et glisser-déposer désactivés sur toutes les images de photos publiques (classe CSS `photo-protected`, gérée par un écouteur délégué dans `app.js`).
 - Filigrane léger incrusté directement dans les pixels de la version web (`PhotoProcessor::applyWatermark()`), donc présent quelle que soit la façon dont l'image est récupérée (URL directe, clic droit, outils de dev) — contrairement à un filigrane en CSS qui n'apparaîtrait que dans le rendu de la page. N'affecte jamais l'original (privé) ni les miniatures (`thumbnail_path`).
 - Piloté par `FOTOMETRO_PHOTO_WATERMARK_ENABLED` (activé par défaut), `FOTOMETRO_PHOTO_WATERMARK_TEXT` (par défaut : l'hôte de `APP_URL`, donc pas de configuration nécessaire en pratique), `FOTOMETRO_PHOTO_WATERMARK_POSITION` (`bottom-right` par défaut) et `FOTOMETRO_PHOTO_WATERMARK_OPACITY` (`0.45` par défaut).
-- Utilise la police bitmap intégrée à GD (pas de `.ttf` à déployer) — texte en ASCII uniquement, les caractères accentués s'afficheraient mal.
-- Rétroactif uniquement après retraitement : les photos déjà publiées avant l'activation ne portent pas le filigrane tant qu'elles ne sont pas retraitées (bouton « Traiter » sur la fiche admin, ou action groupée « Traiter »/« Réessayer » depuis la liste).
+- Utilise la police bitmap intégrée à GD (pas de `.ttf` à déployer) — le texte est converti d'UTF-8 vers Latin-1 avant d'être dessiné (couvre les accents français ; un script hors Latin-1 nécessiterait une police `.ttf` dédiée).
+- Rétroactif uniquement après retraitement : les photos déjà publiées avant l'activation ne portent pas le filigrane tant qu'elles ne sont pas retraitées. Pour un rattrapage en masse sur tout le catalogue (plus rapide que le bouton « Traiter » photo par photo, et sans la limite de 5 de l'action groupée admin — voir `manual_process_limit`) :
+  ```bash
+  php artisan fotometro:process-photos --force --limit=1000
+  ```
+  `--force` fait retraiter même les photos déjà `ready` (donc déjà publiées) ; ajuster `--limit` au nombre total de photos du catalogue.
