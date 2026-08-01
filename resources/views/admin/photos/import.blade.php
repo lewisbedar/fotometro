@@ -184,8 +184,8 @@
                                     </template>
                                 </div>
 
-                                <label class="block text-sm font-semibold">Titre <span class="font-normal text-black/50">(optionnel)</span>
-                                    <input class="mt-1 w-full rounded-md border border-black/15 p-2" x-model="photo.title">
+                                <label class="block text-sm font-semibold">Titre
+                                    <input class="mt-1 w-full rounded-md border border-black/15 p-2" x-model="photo.title" placeholder="Par défaut : le nom du fichier">
                                     <input type="hidden" :name="`photos[${index}][title]`" :value="photo.title">
                                 </label>
 

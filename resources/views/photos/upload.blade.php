@@ -52,8 +52,8 @@
                 <x-category-checklist :categories="$categories" name="photo_category_ids" :selected="old('photo_category_ids', [])" />
             </div>
 
-            <label class="block text-sm font-semibold">Titre <span class="font-normal text-black/50">(optionnel)</span>
-                <input type="text" name="title" value="{{ old('title') }}" class="mt-1 w-full rounded-md border border-black/15 p-2">
+            <label class="block text-sm font-semibold">Titre
+                <input type="text" name="title" value="{{ old('title') }}" placeholder="Par défaut : le nom du fichier" class="mt-1 w-full rounded-md border border-black/15 p-2">
             </label>
 
             <label class="block text-sm font-semibold">Description
